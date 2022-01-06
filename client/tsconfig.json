@@ -1,0 +1,13 @@
+{
+    "compilerOptions": {
+        "module": "es6",
+        "target": "ES2018",
+        "jsx": "react",
+        "moduleResolution": "node",
+        "sourceMap": true,
+        "noImplicitAny": true,
+        "noEmit": false,
+        "strict": true
+    },
+    "include": ["src"]
+}

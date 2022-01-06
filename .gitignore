@@ -1,0 +1,13 @@
+# IDE
+/.vscode/
+
+# Build artifacts
+/bin/
+/obj/
+/wwwroot/scripts/
+
+# Development configs
+/appsettings.Development.json
+
+# Node.js black hole
+node_modules/

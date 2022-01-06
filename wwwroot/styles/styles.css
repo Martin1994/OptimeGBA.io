@@ -1,0 +1,95 @@
+html {
+    height: 100vh;
+    min-height: 100vh;
+}
+
+body {
+    height: 100%;
+    color: #b1dddc;
+    color: #554a7d;
+    color: #432452;
+    color: #bae2ac;
+    color: #e4f6ed;
+    background-image: linear-gradient(180deg, #e4f6ed, #b1dddc);
+    margin: 0;
+}
+
+#app {
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    height: 100%;
+}
+
+#header-container {
+    font-size: 28px;
+    font-family: monospace;
+    color: #432452;
+    font-weight: bold;
+    text-decoration: underline;
+    text-align: center;
+}
+
+#header-container .decoration {
+    color: #339966;
+}
+
+#header-container h1 {
+    margin-block-end: 0;
+}
+
+#content-container {
+    display: flex;  
+    justify-content: center;
+}
+
+#footer-container {
+    width: 100%;
+    background-color: #432452;
+    font-size: 16px;
+    font-family: monospace;
+    color: #bae2ac;
+    text-align: center;
+}
+
+#footer-container div {
+    padding: 20px;
+}
+
+#footer-container a {
+    color: #bae2ac;
+}
+
+#console-container {
+    align-self: center;
+    width: 1120px;
+    height: 640px;
+}
+
+#console-container .console-body {
+    position: absolute;
+    image-rendering: pixelated;
+    width: 1120px;
+    height: 640px;
+}
+
+#console-container .console-screen {
+    position: absolute;
+    image-rendering: pixelated;
+    width: 480px;
+    height: 320px;
+    margin: 160px 320px;
+}
+
+#console-container .console-status {
+    display: flex;
+    position: absolute;
+    margin-left: 320px;
+    margin-top: 480px;
+    width: 480px;
+    height: 32px;
+}
+
+#console-container .console-status span {
+    font-family: monospace;
+    margin: auto 1em;
+}
