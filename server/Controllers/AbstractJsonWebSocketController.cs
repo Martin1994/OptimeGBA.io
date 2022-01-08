@@ -14,8 +14,8 @@ namespace OptimeGBAServer.Controllers
 {
     public abstract class AbstractJsonWebSocketController<TRequest> : ControllerBase where TRequest : class
     {
-        private readonly ILogger _logger;
-        private readonly JsonSerializerOptions? _serializerOptions;
+        protected readonly ILogger _logger;
+        protected readonly JsonSerializerOptions? _serializerOptions;
 
         public AbstractJsonWebSocketController(ILogger logger, JsonSerializerOptions? serializerOptions = null)
         {
@@ -52,7 +52,7 @@ namespace OptimeGBAServer.Controllers
                     {
                         WebSocketReadStream messageStream = new WebSocketReadStream(webSocket);
                         TRequest? request = await JsonSerializer.DeserializeAsync<TRequest>(messageStream, _serializerOptions, cancellationToken);
-                        if (request == null)
+                        if (request is null)
                         {
                             _logger.LogDebug("Received null. Skipped.");
                             continue;

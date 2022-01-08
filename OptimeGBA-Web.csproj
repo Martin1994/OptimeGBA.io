@@ -5,6 +5,10 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup Condition="'$(Configuration)'=='Release'">
+    <Compile Remove="server/Controllers/WebpackReverseProxyController.cs" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\OptimeGBA\OptimeGBA-Core.csproj" />
   </ItemGroup>

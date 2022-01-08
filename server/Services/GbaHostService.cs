@@ -46,13 +46,13 @@ namespace OptimeGBAServer
         {
             OptimeConfig optimeConfig = configuration.GetSection("Optime").Get<OptimeConfig>();
 
-            if (optimeConfig.BiosHome == null)
+            if (optimeConfig.BiosHome is null)
             {
                 throw new InitializationException("GBA BIOS home is not provided.");
             }
             _gbaBiosHome = optimeConfig.BiosHome;
 
-            if (optimeConfig.Rom == null)
+            if (optimeConfig.Rom is null)
             {
                 throw new InitializationException("ROM file is not provided.");
             }
@@ -121,6 +121,20 @@ namespace OptimeGBAServer
                     using MemoryStream encoded = new MemoryStream(screenBuffer, bufferOffset, bufferSize);
                     screen.Save(encoded, encoder);
                     _screenSubjectService.BufferWriter.TryWrite(new ReadOnlyMemory<byte>(screenBuffer, bufferOffset, (int)encoded.Position));
+                }
+
+                if (gba.Mem.SaveProvider.Dirty)
+                {
+                    gba.Mem.SaveProvider.Dirty = false;
+                    try
+                    {
+                        _logger.LogInformation("Save dirty. Flusing to disk... {0}", gba.Provider.SavPath);
+                        await File.WriteAllBytesAsync(gba.Provider.SavPath, gba.Mem.SaveProvider.GetSave());
+                    }
+                    catch
+                    {
+                        _logger.LogInformation("Failed to write sav file to {0}.", gba.Provider.SavPath);
+                    }
                 }
 
                 double fps = Math.Clamp(1 / fpsStopwatch.Elapsed.TotalSeconds / (double)FPS_SAMPLE_SIZE, 0, 999d);
@@ -202,7 +216,9 @@ namespace OptimeGBAServer
             var provider = new ProviderGba(gbaBios, rom, savPath, x => {});
             provider.BootBios = true;
 
-            return new Gba(provider);
+            Gba gba = new Gba(provider);
+            gba.Mem.SaveProvider.LoadSave(sav);
+            return gba;
         }
     }
 }

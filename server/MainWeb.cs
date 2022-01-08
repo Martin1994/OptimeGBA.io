@@ -28,12 +28,12 @@ namespace OptimeGBAServer
 
             WebApplication app = builder.Build();
 
-            app.UseDefaultFiles();
-            app.UseStaticFiles();
-
             app.UseWebSockets();
 
             app.MapControllers();
+
+            app.UseDefaultFiles();
+            app.UseStaticFiles();
 
             await app.RunAsync();
         }

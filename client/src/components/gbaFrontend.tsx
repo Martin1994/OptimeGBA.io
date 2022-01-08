@@ -1,10 +1,12 @@
 import * as React from "react";
+import { ActionRequest, ActionResponse, GbaKey, GbaKeyAction, KeyActionRequest } from "../models/actions";
 
 interface GbaFrontendState {
-    screenSource: string;
+    screenBuffer?: Blob;
+    rtt: number;
     fps: number;
     worstFrameLatency: number;
-    status: "shutdown" | "disconnected" | "connecting" | "connected"
+    status: "shutdown" | "disconnected" | "connecting" | "connected";
 }
 
 // In milliseconds
@@ -15,6 +17,8 @@ const FPS_REFRESH_INTERVAL: number = 1000;
 export class GbaFrontend extends React.Component<{}, GbaFrontendState> {
 
     private unloadHandler?: (e: BeforeUnloadEvent) => void = undefined;
+    private keyDownHandler?: (e: KeyboardEvent) => void = undefined;
+    private keyUpHandler?: (e: KeyboardEvent) => void = undefined;
     private ws?: WebSocket = undefined;
     private timerId: ReturnType<typeof setTimeout> | undefined = undefined;
 
@@ -25,10 +29,13 @@ export class GbaFrontend extends React.Component<{}, GbaFrontendState> {
     private lastFrameArrived: number = NaN;
     private worstFrameLatencyInWindow: number = 0;
 
+    private currentScreenBlobUrl?: string;
+
     constructor({}) {
         super({});
         this.state = {
-            screenSource: "./screen.png",
+            screenBuffer: undefined,
+            rtt: NaN,
             fps: 0,
             worstFrameLatency: NaN,
             status: "shutdown"
@@ -36,13 +43,21 @@ export class GbaFrontend extends React.Component<{}, GbaFrontendState> {
     }
 
     public render(): React.ReactNode {
+        if (this.currentScreenBlobUrl) {
+            URL.revokeObjectURL(this.currentScreenBlobUrl);
+        }
+        let screenSource = "about:blank";
+        if (this.state.screenBuffer) {
+            screenSource = URL.createObjectURL(this.state.screenBuffer);
+            this.currentScreenBlobUrl = screenSource;
+        }
         return <div id="console-container">
             <img className="console-body" src="./images/consoleBody.png" />
             <img className="console-body" src="./images/innerLogo.png" />
             <img className="console-body" style={this.indicatorStyle} src="./images/consoleIndicator.png" />
-            <img className="console-screen" src={this.state.screenSource} />
+            <img className="console-screen" src={screenSource} />
             <div className="console-status">
-                <span>{this.renderedFps} | {this.renderedWorstFrameLatency}</span>
+                <span>{`RTT: ${this.renderedRtt.padStart(6, "\u00A0")} | FPS: ${this.renderedFps.padStart(2, "\u00A0")} | Worst Frame Gap: ${this.renderedWorstFrameLatency.padStart(14, "\u00A0")}`}</span>
             </div>
         </div>;
     }
@@ -55,19 +70,21 @@ export class GbaFrontend extends React.Component<{}, GbaFrontendState> {
         };
         window.addEventListener("beforeunload", this.unloadHandler);
 
-        this.timerId = setInterval(() => {
-            let reliableWorstFrameLatency: number = this.worstFrameLatencyInWindow;
-            if (isNaN(this.lastFrameArrived) || this.lastFrameArrived < performance.now() - 1000) {
-                reliableWorstFrameLatency = NaN;
-                this.lastFrameArrived = NaN; // To prevent polluting the next valuable window
+        this.keyDownHandler = (e: KeyboardEvent) => {
+            if (this.mapKeyAction(e.code, "down", e.repeat)) {
+                e.preventDefault();
             }
-            this.setState({
-                fps: this.frameCounter / FPS_REFRESH_INTERVAL * 1000,
-                worstFrameLatency: reliableWorstFrameLatency
-            });
-            this.frameCounter = 0;
-            this.worstFrameLatencyInWindow = 0;
-        }, FPS_REFRESH_INTERVAL);
+        };
+        window.addEventListener("keydown", this.keyDownHandler)
+
+        this.keyUpHandler = (e: KeyboardEvent) => {
+            if (this.mapKeyAction(e.code, "up", e.repeat)) {
+                e.preventDefault();
+            }
+        };
+        window.addEventListener("keyup", this.keyUpHandler)
+
+        this.timerId = setInterval(() => this.refreshStatus(), FPS_REFRESH_INTERVAL);
     }
 
     public componentWillUnmount(): void {
@@ -75,15 +92,153 @@ export class GbaFrontend extends React.Component<{}, GbaFrontendState> {
             window.removeEventListener("beforeunload", this.unloadHandler);
         }
 
+        if (this.keyDownHandler) {
+            window.removeEventListener("keydown", this.keyDownHandler);
+        }
+
+        if (this.keyUpHandler) {
+            window.removeEventListener("keyup", this.keyUpHandler);
+        }
+
         if (this.timerId) {
             clearInterval(this.timerId);
         }
     }
 
+    private refreshStatus() {
+        let reliableWorstFrameLatency: number = this.worstFrameLatencyInWindow;
+        if (isNaN(this.lastFrameArrived) || this.lastFrameArrived < performance.now() - 1000) {
+            reliableWorstFrameLatency = NaN;
+            this.lastFrameArrived = NaN; // To prevent polluting the next valuable window
+        }
+        this.setState({
+            fps: this.frameCounter / FPS_REFRESH_INTERVAL * 1000,
+            worstFrameLatency: reliableWorstFrameLatency
+        });
+        this.frameCounter = 0;
+        this.worstFrameLatencyInWindow = 0;
+
+        this.ping();
+    }
+
+    private handleMessage(e: MessageEvent<Blob | string>) {
+        if (e.data instanceof Blob) {
+            this.handleFrame(e.data);
+            return;
+        }
+
+        const message: ActionResponse = JSON.parse(e.data);
+        switch (message.action) {
+            case "pong":
+                this.setState({
+                    rtt: performance.now() - message.pongAction.madeAt
+                });
+                break;
+
+            default:
+                // No op
+                break;
+        }
+    }
+
+    private handleFrame(frame: Blob) {
+        this.setState({
+            screenBuffer: frame
+        });
+
+        this.frameCounter++;
+
+        const frameArrived = performance.now();
+        if (this.lastFrameArrived) {
+            const frameLatency = frameArrived - this.lastFrameArrived;
+            if (frameLatency > this.worstFrameLatencyInWindow) {
+                this.worstFrameLatencyInWindow = frameLatency;
+            }
+        }
+        this.lastFrameArrived = frameArrived;
+
+        this.sendAction({
+            action: "fillToken",
+            fillTokenAction: {
+                count: 1
+            }
+        });
+    }
+
+    private mapKeyAction(key: string, action: GbaKeyAction, repeat: boolean): boolean {
+        switch (key) {
+            case "KeyZ":
+                this.sendKeyAction("A", action, repeat);
+                break;
+
+            case "KeyX":
+                this.sendKeyAction("B", action, repeat);
+                break;
+
+            case "KeyA":
+                this.sendKeyAction("L", action, repeat);
+                break;
+
+            case "KeyS":
+                this.sendKeyAction("R", action, repeat);
+                break;
+
+            case "Backspace":
+                this.sendKeyAction("select", action, repeat);
+                break;
+
+            case "Enter":
+                this.sendKeyAction("start", action, repeat);
+                break;
+
+            case "ArrowLeft":
+                this.sendKeyAction("left", action, repeat);
+                break;
+
+            case "ArrowRight":
+                this.sendKeyAction("right", action, repeat);
+                break;
+
+            case "ArrowUp":
+                this.sendKeyAction("up", action, repeat);
+                break;
+
+            case "ArrowDown":
+                this.sendKeyAction("down", action, repeat);
+                break;
+
+            default:
+                return false;
+        }
+
+        return true;
+    }
+
+    private sendKeyAction(key: GbaKey, action: GbaKeyAction, repeat: boolean) {
+        if (repeat) {
+            return;
+        }
+        const request: KeyActionRequest = {
+            action: "key",
+            keyAction: { key, action }
+        };
+        this.sendAction(request);
+        this.ping();
+    }
+
+    private sendAction(request: ActionRequest) {
+        if (!this.ws) {
+            console.warn("No connection. Action will be discarded.");
+            return;
+        }
+
+        this.ws.send(JSON.stringify(request));
+    }
+
     private initiateInterfaceCommunication(): WebSocket {
         console.log("Initiating interface communication...");
 
-        const ws = new WebSocket(`${location.href.replace(/^http/, "ws")}consoleInterface.sock`);
+        const ws = new WebSocket(`${location.href.substring(0, window.location.href.lastIndexOf("/") + 1).replace(/^http/, "ws")}consoleInterface.sock`);
         this.setState({
             status: "connecting"
         });
@@ -97,22 +252,7 @@ export class GbaFrontend extends React.Component<{}, GbaFrontendState> {
             this.retryTimeout = RETRY_TIMEOUT_MIN;
         });
 
-        ws.addEventListener("message", (e: MessageEvent<Blob>) => {
-            this.setState({
-                screenSource: URL.createObjectURL(e.data)
-            });
-
-            this.frameCounter++;
-
-            const frameArrived = performance.now();
-            if (this.lastFrameArrived) {
-                const frameLatency = frameArrived - this.lastFrameArrived;
-                if (frameLatency > this.worstFrameLatencyInWindow) {
-                    this.worstFrameLatencyInWindow = frameLatency;
-                }
-            }
-            this.lastFrameArrived = frameArrived;
-        });
+        ws.addEventListener("message", (e: MessageEvent<Blob | string>) => this.handleMessage(e));
 
         const reconnect = () => {
             console.error("Reconnecting");
@@ -129,9 +269,17 @@ export class GbaFrontend extends React.Component<{}, GbaFrontendState> {
         };
 
         ws.addEventListener("close", reconnect);
-        ws.addEventListener("error", reconnect);
 
         return ws;
+    }
+
+    private ping() {
+        this.sendAction({
+            action: "ping",
+            pingAction: {
+                madeAt: performance.now()
+            }
+        });
     }
 
     private get indicatorStyle(): React.CSSProperties | undefined
@@ -154,20 +302,24 @@ export class GbaFrontend extends React.Component<{}, GbaFrontendState> {
         }
     }
 
+    private get renderedRtt(): string {
+        if (isFinite(this.state.rtt)) {
+            return `${this.state.rtt.toFixed(0)}ms`;
+        } else {
+            return "N/A"
+        }
+    }
+
     private get renderedFps(): string {
-        return `FPS: ${this.state.fps.toString(10).padStart(2, "0")}`;
+        return Math.min(this.state.fps, 99).toString(10).padStart(2, "0");
     }
 
     private get renderedWorstFrameLatency(): string {
-        return `Worst Frame Latency: ${this.renderedWorstFrameLatencyContent.padEnd(12)}`;
-    }
-
-    private get renderedWorstFrameLatencyContent(): string {
         if (isNaN(this.state.worstFrameLatency)) {
             return "NO DATA";
         } else {
             const breachedPct = (this.state.worstFrameLatency / 1000 * this.state.fps - 1) * 100;
-            return `${this.state.worstFrameLatency.toFixed(0)}ms / ${breachedPct > 0 ? "+" : "-"}${Math.abs(breachedPct).toFixed(0)}%`;
+            return `${this.state.worstFrameLatency.toFixed(0)}ms / ${breachedPct > 0 ? "+" : "-"}${Math.min(Math.abs(breachedPct), 999).toFixed(0)}%`;
         }
     }
 }

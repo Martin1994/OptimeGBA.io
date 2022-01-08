@@ -44,11 +44,6 @@ namespace OptimeGBAServer
             {
                 ReadOnlyMemory<byte> buffer = await _buffer.Reader.ReadAsync(cancellationToken);
 
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    break;
-                }
-
                 // It it safe to iterate a ConcurrentDictionary while its content can be updated
                 foreach (ChannelWriter<ReadOnlyMemory<byte>> observerWriter in _observers.Keys)
                 {

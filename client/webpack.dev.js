@@ -3,12 +3,13 @@ const common = require('./webpack.config.js');
 
 module.exports = merge(common, {
     mode: 'development',
-    devtool: "nosources-source-map",
+    devtool: "source-map",
     devServer: {
         host: 'local-ip',
         port: '',
         static: false,
         compress: true,
-        port: 9000,
+        host: '127.0.0.1',
+        port: 5001,
     }
 });
