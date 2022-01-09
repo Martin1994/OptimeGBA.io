@@ -14,6 +14,9 @@ namespace OptimeGBAServer.Utilities
         private const int COLOR_MASK = 0x7FFF;
         private readonly Color[] _colorLut = new Color[COLOR_COUNT];
         private readonly Rgba32[] _rgbLut = new Rgba32[COLOR_COUNT];
+        private readonly byte[] _yLut = new byte[COLOR_COUNT];
+        private readonly byte[] _uLut = new byte[COLOR_COUNT];
+        private readonly byte[] _vLut = new byte[COLOR_COUNT];
 
         public ScreenshotHelper()
         {
@@ -22,6 +25,10 @@ namespace OptimeGBAServer.Utilities
             {
                 _colorLut[i] = Rgb555ToRgba32(i);
                 _rgbLut[i] = Rgb555ToRgba32(i);
+                Rgba32 yuv = Rgb555ToYuv420(i);
+                _yLut[i] = yuv.R;
+                _uLut[i] = yuv.G;
+                _vLut[i] = yuv.B;
             }
         }
 
@@ -33,6 +40,39 @@ namespace OptimeGBAServer.Utilities
                 for (int x = 0; x < GbaHostService.GBA_WIDTH; x++)
                 {
                     image[x, y] = _rgbLut[buffer[x + y * GbaHostService.GBA_WIDTH] & COLOR_MASK];
+                }
+            }
+        }
+
+        public void TakeYuv420(Gba gba, int width, int height, Span<byte> buffer)
+        {
+            Debug.Assert(buffer.Length == width * height * 3 / 2);
+
+            int frameSize = width * height;
+            int yIndex = 0;
+            int vIndex = frameSize;
+            int uIndex = frameSize + (frameSize / 4);
+            int index = 0;
+
+            Span<ushort> screen = gba.Ppu.Renderer.ScreenFront;
+            for (int j = 0; j < height; j++)
+            {
+                for (int i = 0; i < width; i++)
+                {
+                    int rgb555 = screen[i + j * GbaHostService.GBA_WIDTH] & COLOR_MASK;
+                    byte y = _yLut[rgb555];
+                    byte u = _uLut[rgb555];
+                    byte v = _vLut[rgb555];
+
+                    buffer[yIndex++] = y;
+
+                    if (j % 2 == 0 && index % 2 == 0)
+                    {
+                        buffer[uIndex++] = u;
+                        buffer[vIndex++] = v;
+                    }
+
+                    index++;
                 }
             }
         }
@@ -50,15 +90,39 @@ namespace OptimeGBAServer.Utilities
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Rgba32 Rgb555ToRgba32(uint data)
         {
-            byte r = (byte)((data >> 0) & 0b11111);
-            byte g = (byte)((data >> 5) & 0b11111);
-            byte b = (byte)((data >> 10) & 0b11111);
+            double r = ((data >> 0) & 0b11111);
+            double g = ((data >> 5) & 0b11111);
+            double b = ((data >> 10) & 0b11111);
 
-            byte fr = (byte)((255 / 31) * r);
-            byte fg = (byte)((255 / 31) * g);
-            byte fb = (byte)((255 / 31) * b);
+            const double coef555to888 = 255.0d / 31.0d;
+            byte fr = (byte)(coef555to888 * r);
+            byte fg = (byte)(coef555to888 * g);
+            byte fb = (byte)(coef555to888 * b);
 
             return new Rgba32(fr, fg, fb);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static Rgba32 Rgb555ToYuv420(uint data)
+        {
+            double r = ((data >> 0) & 0b11111);
+            double g = ((data >> 5) & 0b11111);
+            double b = ((data >> 10) & 0b11111);
+
+            const double coef555to888 = 255.0d / 31.0d;
+            double fr = coef555to888 * r;
+            double fg = coef555to888 * g;
+            double fb = coef555to888 * b;
+
+            int y = (int)(0.257 * fr + 0.504 * fg + 0.098 * fb) + 16;
+            int u = (int)(0.439 * fr - 0.368 * fg - 0.071 * fb) + 128;
+            int v = (int)(-0.148 * fr - 0.291 * fg + 0.439 * fb) + 128;
+
+            return new Rgba32(
+                (byte)((y < 0) ? 0 : ((y > 255) ? 255 : y)),
+                (byte)((u < 0) ? 0 : ((u > 255) ? 255 : u)),
+                (byte)((v < 0) ? 0 : ((v > 255) ? 255 : v))
+            );
         }
     }
 }

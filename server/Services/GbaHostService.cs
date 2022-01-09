@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using OpenH264Lib;
 using OptimeGBA;
 using OptimeGBAServer.Collections.Generics;
 using OptimeGBAServer.Exceptions;
@@ -77,20 +78,28 @@ namespace OptimeGBAServer
 
         private async Task RunAsync(Gba gba, CancellationToken cancellationToken)
         {
-            IImageEncoder encoder = new PngEncoder()
-            {
-                FilterMethod = PngFilterMethod.None,
-                CompressionLevel = PngCompressionLevel.BestSpeed,
-                InterlaceMethod = PngInterlaceMode.None,
-                TransparentColorMode = PngTransparentColorMode.Clear
-            };
+            //IImageEncoder encoder = new PngEncoder()
+            //{
+            //    FilterMethod = PngFilterMethod.None,
+            //    CompressionLevel = PngCompressionLevel.BestSpeed,
+            //    InterlaceMethod = PngInterlaceMode.None,
+            //    TransparentColorMode = PngTransparentColorMode.Clear
+            //};
 
-            // Allocate screen buffer
-            using Image<Rgba32> screen = new Image<Rgba32>(GBA_WIDTH, GBA_HEIGHT);
-            int bufferPoolSize = 16;
-            int bufferSize = 0x20000; // 128k
-            int bufferPoolIndex = 0;
-            byte[] screenBuffer = new byte[bufferSize * bufferPoolSize];
+            //// Allocate screen buffer
+            //using Image<Rgba32> screen = new Image<Rgba32>(GBA_WIDTH, GBA_HEIGHT);
+            //int bufferPoolSize = 16;
+            //int bufferSize = 0x20000; // 128k
+            //int bufferPoolIndex = 0;
+            //byte[] screenBuffer = new byte[bufferSize * bufferPoolSize];
+
+            byte[] screenBuffer = new byte[GBA_WIDTH * GBA_HEIGHT * 3 / 2];
+            OpenH264Lib.Encoder encoder = new OpenH264Lib.Encoder("openh264-2.1.1-win64.dll");
+            encoder.Setup(GBA_WIDTH, GBA_HEIGHT, 8228800, 60, 1.0f, (data, length, frameType) =>
+            {
+                _logger.LogInformation("Frame received: {0}", length / 1024.0);
+                _screenSubjectService.BufferWriter.TryWrite(new ReadOnlyMemory<byte>(data, 0, length));
+            });
 
             using PeriodicTimer mainClock = new PeriodicTimer(TimeSpan.FromSeconds(SECONDS_PER_FRAME_GBA));
             Stopwatch fpsStopwatch = new Stopwatch();
@@ -115,12 +124,9 @@ namespace OptimeGBAServer
 
                 if (gba.Ppu.Renderer.RenderingDone)
                 {
-                    _screenshot.Take(gba, screen);
-                    int bufferOffset = bufferPoolIndex * bufferSize;
-                    bufferPoolIndex = (bufferPoolIndex + 1) % bufferPoolSize;
-                    using MemoryStream encoded = new MemoryStream(screenBuffer, bufferOffset, bufferSize);
-                    screen.Save(encoded, encoder);
-                    _screenSubjectService.BufferWriter.TryWrite(new ReadOnlyMemory<byte>(screenBuffer, bufferOffset, (int)encoded.Position));
+                    _screenshot.TakeYuv420(gba, GBA_WIDTH, GBA_HEIGHT, screenBuffer);
+                    encoder.Encode(screenBuffer);
+                    _logger.LogInformation("Frame sent: {0}", (double)screenBuffer.Length / 1024.0);
                 }
 
                 if (gba.Mem.SaveProvider.Dirty)
@@ -161,7 +167,7 @@ namespace OptimeGBAServer
             _logger.LogInformation("Booting GBA...");
 
             string gbaBiosPath = Path.Join(_gbaBiosHome, "gba_bios.bin");
-            if (!System.IO.File.Exists(gbaBiosPath))
+            if (!File.Exists(gbaBiosPath))
             {
                 throw new InitializationException("Please place a valid GBA BIOS under BIOS home named \"gba_bios.bin\"");
             }
