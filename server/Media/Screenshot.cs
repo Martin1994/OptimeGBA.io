@@ -6,7 +6,7 @@ using OptimeGBA;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 
-namespace OptimeGBAServer.Utilities
+namespace OptimeGBAServer.Media
 {
     public class ScreenshotHelper
     {

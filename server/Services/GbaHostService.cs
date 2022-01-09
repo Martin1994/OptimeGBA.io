@@ -9,13 +9,12 @@ using Microsoft.Extensions.Logging;
 using OptimeGBA;
 using OptimeGBAServer.Collections.Generics;
 using OptimeGBAServer.Exceptions;
+using OptimeGBAServer.Media;
 using OptimeGBAServer.Models;
-using OptimeGBAServer.Utilities;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats;
 using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Processing.Processors.Quantization;
 
 namespace OptimeGBAServer
 {

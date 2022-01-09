@@ -5,7 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using OptimeGBAServer.Exceptions;
 
-namespace OptimeGBAServer.Utilities
+namespace OptimeGBAServer.IO
 {
     public class WebSocketReadStream : Stream
     {
