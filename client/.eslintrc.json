@@ -1,0 +1,10 @@
+{
+    "extends": [
+        "@microsoft/eslint-config-azuretools"
+    ],
+    "rules": {
+        "@typescript-eslint/no-empty-interface": ["off"],
+        "@typescript-eslint/no-floating-promises": ["error"],
+        "quotes": ["error", "double"]
+    }
+}

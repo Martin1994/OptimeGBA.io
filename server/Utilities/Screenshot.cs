@@ -50,13 +50,14 @@ namespace OptimeGBAServer.Utilities
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Rgba32 Rgb555ToRgba32(uint data)
         {
-            byte r = (byte)((data >> 0) & 0b11111);
-            byte g = (byte)((data >> 5) & 0b11111);
-            byte b = (byte)((data >> 10) & 0b11111);
+            double r = (data >> 0) & 0b11111;
+            double g = (data >> 5) & 0b11111;
+            double b = (data >> 10) & 0b11111;
 
-            byte fr = (byte)((255 / 31) * r);
-            byte fg = (byte)((255 / 31) * g);
-            byte fb = (byte)((255 / 31) * b);
+            const double factor555To888 = 255.0d / 31.0d;
+            byte fr = (byte)(factor555To888 * r);
+            byte fg = (byte)(factor555To888 * g);
+            byte fb = (byte)(factor555To888 * b);
 
             return new Rgba32(fr, fg, fb);
         }

@@ -14,6 +14,9 @@ const RETRY_TIMEOUT_MIN: number = 1000;
 const RETRY_TIMEOUT_MAX: number = 60000;
 const FPS_REFRESH_INTERVAL: number = 1000;
 
+export interface GbaFrontendProps {
+}
+
 export class GbaFrontend extends React.Component<{}, GbaFrontendState> {
 
     private unloadHandler?: (e: BeforeUnloadEvent) => void = undefined;
@@ -31,8 +34,8 @@ export class GbaFrontend extends React.Component<{}, GbaFrontendState> {
 
     private currentScreenBlobUrl?: string;
 
-    constructor({}) {
-        super({});
+    constructor(props: GbaFrontendProps) {
+        super(props);
         this.state = {
             screenBuffer: undefined,
             rtt: NaN,
@@ -127,7 +130,7 @@ export class GbaFrontend extends React.Component<{}, GbaFrontendState> {
             return;
         }
 
-        const message: ActionResponse = JSON.parse(e.data);
+        const message: ActionResponse = JSON.parse(e.data) as ActionResponse;
         switch (message.action) {
             case "pong":
                 this.setState({

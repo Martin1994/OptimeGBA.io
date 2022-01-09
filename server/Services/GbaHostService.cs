@@ -161,7 +161,7 @@ namespace OptimeGBAServer
             _logger.LogInformation("Booting GBA...");
 
             string gbaBiosPath = Path.Join(_gbaBiosHome, "gba_bios.bin");
-            if (!System.IO.File.Exists(gbaBiosPath))
+            if (!File.Exists(gbaBiosPath))
             {
                 throw new InitializationException("Please place a valid GBA BIOS under BIOS home named \"gba_bios.bin\"");
             }
