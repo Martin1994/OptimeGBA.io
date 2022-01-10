@@ -795,10 +795,10 @@ namespace OptimeGBAServer.Media.LibVpx.Native
      *
      * This structure is able to hold a reference to any fixed size buffer.
      */
-    public struct vpx_fixed_buf_t
+    public unsafe struct vpx_fixed_buf_t
     {
-        IntPtr buf;       /**< Pointer to the data */
-        ulong sz;       /**< Length of the buffer, in chars */
+        public byte* buf;       /**< Pointer to the data */
+        public ulong sz;       /**< Length of the buffer, in chars */
     }
 
     /*!\brief Keyframe placement mode.
@@ -842,23 +842,25 @@ namespace OptimeGBAServer.Media.LibVpx.Native
             [FieldOffset(0)]
             public vpx_fixed_buf_t raw;       /**< data for arbitrary packets */
 
+            #pragma warning disable 0169
             /* This packet size is fixed to allow codecs to extend this
             * interface without having to manage storage for raw packets,
             * i.e., if it's smaller than 128 bytes, you can store in the
             * packet list directly.
             */
             [FieldOffset(0)]
-            public fixed byte pad[128 - sizeof(vpx_codec_cx_pkt_kind)]; /**< fixed sz */
+            private fixed byte pad[128 - sizeof(vpx_codec_cx_pkt_kind)]; /**< fixed sz */
+            #pragma warning restore 0169
         }
 
         public struct frame_t
         {
-            public IntPtr buf; /**< compressed data buffer */
-            public long sz; /**< length of compressed data */
+            public byte* buf; /**< compressed data buffer */
+            public ulong sz; /**< length of compressed data */
             /*!\brief time stamp to show frame (in timebase units) */
             public vpx_codec_pts_t pts;
             /*!\brief duration to show frame (in timebase units) */
-            uint duration;
+            public uint duration;
             public vpx_codec_frame_flags_t flags; /**< flags for this frame */
             /*!\brief the partition id defines the decoding order of the partitions.
             * Only applicable when "output partition" mode is enabled. First

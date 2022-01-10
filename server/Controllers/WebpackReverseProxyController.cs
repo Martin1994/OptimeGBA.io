@@ -1,4 +1,5 @@
 using System.Net.Http;
+using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
@@ -32,11 +33,26 @@ namespace OptimeGBAServer.Controllers
             }
             catch (HttpRequestException ex)
             {
+                const int ECONNREFUSED = 10061;
+                SocketException? inner = ex.InnerException as SocketException;
+                if (inner != null && inner.ErrorCode == ECONNREFUSED)
+                {
+                    return new ContentResult()
+                    {
+                        Content = ex.Message,
+                        StatusCode = 503
+                    };
+                }
+
                 return new ContentResult()
                 {
                     Content = ex.Message,
                     StatusCode = (int)(ex.StatusCode ?? System.Net.HttpStatusCode.InternalServerError)
                 };
+            }
+            catch (TaskCanceledException)
+            {
+                return new EmptyResult();
             }
         }
     }

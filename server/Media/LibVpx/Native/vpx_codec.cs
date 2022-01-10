@@ -69,10 +69,10 @@ namespace OptimeGBAServer.Media.LibVpx.Native
      */
     public unsafe struct vpx_codec_ctx_t
     {
-        public char* name;             /**< Printable interface name */
+        public byte* name;             /**< Printable interface name */
         public vpx_codec_iface_t* iface;     /**< Interface pointers */
         public vpx_codec_err_t err;          /**< Last returned error */
-        public char* err_detail;       /**< Detailed info, if available */
+        public byte* err_detail;       /**< Detailed info, if available */
         public vpx_codec_flags_t init_flags; /**< Flags passed at init time */
         public IntPtr config;               /**< Configuration pointer aliasing union */
         public IntPtr priv; /**< Algorithm private storage */

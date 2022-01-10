@@ -81,12 +81,14 @@ namespace OptimeGBAServer.Media.LibVpx.Native
         */
         public IntPtr user_priv;
 
+        #pragma warning disable 0169
         /* The following members should be treated as private. */
         private IntPtr img_data; /**< private */
         private int img_data_owner;      /**< private */
         private int self_allocd;         /**< private */
 
         private IntPtr fb_priv; /**< Frame buffer data associated with the image. */
+        #pragma warning restore 0169
     }
 
     public enum vpx_img_fmt_t

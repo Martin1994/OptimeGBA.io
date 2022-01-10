@@ -1,4 +1,3 @@
-using System;
 using System.Runtime.InteropServices;
 
 namespace OptimeGBAServer.Media.LibVpx.Native
@@ -24,6 +23,13 @@ namespace OptimeGBAServer.Media.LibVpx.Native
         /*!@} - end algorithm interface member group*/
     }
 
+    /*!\brief VPx encoder control functions
+     *
+     * This set of macros define the control functions available for VPx
+     * encoder interface.
+     *
+     * \sa #vpx_codec_control
+     */
     public enum vp8e_enc_control_id
     {
         /*!\brief Codec control function to pass an ROI map to encoder.
@@ -655,5 +661,12 @@ namespace OptimeGBAServer.Media.LibVpx.Native
          * Supported in codecs: VP8
          */
         VP8E_SET_RTC_EXTERNAL_RATECTRL,
+    }
+
+    public enum vp9e_tune_content {
+        VP9E_CONTENT_DEFAULT,
+        VP9E_CONTENT_SCREEN,
+        VP9E_CONTENT_FILM,
+        VP9E_CONTENT_INVALID
     }
 }
