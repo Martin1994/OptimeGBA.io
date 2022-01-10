@@ -178,8 +178,9 @@ namespace OptimeGBAServer.Media.LibVpx.Native
      *
      * Opaque storage used for iterating over lists.
      */
-    public struct vpx_codec_iter_t
+    public unsafe struct vpx_codec_iter_t
     {
         // Opaque implementation. Use pointers only.
+        private void* data;
     }
 }

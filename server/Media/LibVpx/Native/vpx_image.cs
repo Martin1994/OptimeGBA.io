@@ -41,49 +41,52 @@ namespace OptimeGBAServer.Media.LibVpx.Native
 
     public unsafe struct vpx_image_t
     {
-        vpx_img_fmt_t fmt;       /**< Image Format */
-        vpx_color_space_t cs;    /**< Color Space */
-        vpx_color_range_t range; /**< Color Range */
+        public vpx_img_fmt_t fmt;       /**< Image Format */
+        public vpx_color_space_t cs;    /**< Color Space */
+        public vpx_color_range_t range; /**< Color Range */
 
         /* Image storage dimensions */
-        uint w;         /**< Stored image width */
-        uint h;         /**< Stored image height */
-        uint bit_depth; /**< Stored image bit-depth */
+        public uint w;         /**< Stored image width */
+        public uint h;         /**< Stored image height */
+        public uint bit_depth; /**< Stored image bit-depth */
 
         /* Image display dimensions */
-        uint d_w; /**< Displayed image width */
-        uint d_h; /**< Displayed image height */
+        public uint d_w; /**< Displayed image width */
+        public uint d_h; /**< Displayed image height */
 
         /* Image intended rendering dimensions */
-        uint r_w; /**< Intended rendering image width */
-        uint r_h; /**< Intended rendering image height */
+        public uint r_w; /**< Intended rendering image width */
+        public uint r_h; /**< Intended rendering image height */
 
         /* Chroma subsampling info */
-        uint x_chroma_shift; /**< subsampling order, X */
-        uint y_chroma_shift; /**< subsampling order, Y */
+        public uint x_chroma_shift; /**< subsampling order, X */
+        public uint y_chroma_shift; /**< subsampling order, Y */
 
         /* Image data pointers. */
-        const int VPX_PLANE_PACKED = 0;  /**< To be used for all packed formats */
-        const int VPX_PLANE_Y = 0;       /**< Y (Luminance) plane */
-        const int VPX_PLANE_U = 1;       /**< U (Chroma) plane */
-        const int VPX_PLANE_V = 2;       /**< V (Chroma) plane */
-        const int VPX_PLANE_ALPHA = 3;   /**< A (Transparency) plane */
-        fixed byte planes[4]; /**< pointer to the top left pixel for each plane */
-        fixed int stride[4];            /**< stride between rows for each plane */
+        /**< pointer to the top left pixel for each plane */
+        public byte* plane_y;
+        public byte* plane_u;
+        public byte* plane_v;
+        public byte* plane_alpha;
+        /**< stride between rows for each plane */
+        public int stride_y;
+        public int stride_u;
+        public int stride_v;
+        public int stride_alpha;
 
-        int bps; /**< bits per sample (for packed formats) */
+        public int bps; /**< bits per sample (for packed formats) */
 
         /*!\brief The following member may be set by the application to associate
         * data with this image.
         */
-        IntPtr user_priv;
+        public IntPtr user_priv;
 
         /* The following members should be treated as private. */
-        IntPtr img_data; /**< private */
-        int img_data_owner;      /**< private */
-        int self_allocd;         /**< private */
+        private IntPtr img_data; /**< private */
+        private int img_data_owner;      /**< private */
+        private int self_allocd;         /**< private */
 
-        IntPtr fb_priv; /**< Frame buffer data associated with the image. */
+        private IntPtr fb_priv; /**< Frame buffer data associated with the image. */
     }
 
     public enum vpx_img_fmt_t

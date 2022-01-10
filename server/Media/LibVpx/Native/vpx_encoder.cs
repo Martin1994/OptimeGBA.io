@@ -756,12 +756,22 @@ namespace OptimeGBAServer.Media.LibVpx.Native
         public int den;        /**< fraction denominator */
     }
 
-    public struct vpx_codec_er_flags_t
+    /*!\brief Error Resilient flags
+     *
+     * These flags define which error resilient features to enable in the
+     * encoder. The flags are specified through the
+     * vpx_codec_enc_cfg::g_error_resilient variable.
+     */
+    public enum vpx_codec_er_flags_t
     {
-        public uint value;
-
-        public static implicit operator vpx_codec_er_flags_t(uint value) => new vpx_codec_er_flags_t() { value = value };
-        public static implicit operator uint(vpx_codec_er_flags_t t) => t.value;
+        VPX_ERROR_RESILIENT_NONE = 0x0,
+        /*!\brief Improve resiliency against losses of whole frames */
+        VPX_ERROR_RESILIENT_DEFAULT = 0x1,
+        /*!\brief The frame partitions are independently decodable by the bool decoder,
+        * meaning that partitions can be decoded even though earlier partitions have
+        * been lost. Note that intra prediction is still done over the partition
+        * boundary. */
+        VPX_ERROR_RESILIENT_PARTITIONS = 0x2
     }
 
     /*!\brief Multi-pass Encoding Pass */
@@ -911,6 +921,7 @@ namespace OptimeGBAServer.Media.LibVpx.Native
      */
     public enum vpx_codec_frame_flags_t
     {
+        VPX_FRAME_NONE = 0x0,
         VPX_FRAME_IS_KEY = 0x1, /**< frame is the start of a GOP */
         /*!\brief frame can be dropped without affecting the stream (no future frame
          * depends on this one) */

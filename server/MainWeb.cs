@@ -72,6 +72,8 @@ namespace OptimeGBAServer
             cfg.g_h = height;
             cfg.g_timebase.num = 280896;
             cfg.g_timebase.den = 16777216;
+            cfg.g_lag_in_frames = 0;
+            cfg.g_error_resilient = vpx_codec_er_flags_t.VPX_ERROR_RESILIENT_DEFAULT;
 
             res = vpx_codec_enc_init(&codec, iface, &cfg, 0);
             if (res != vpx_codec_err_t.VPX_CODEC_OK)
@@ -81,8 +83,8 @@ namespace OptimeGBAServer
             if (res != vpx_codec_err_t.VPX_CODEC_OK)
                 throw new Exception("Failed to use lossless mode");
 
-            EncodeFrame(&codec, raw, frame_count++, vpx_enc_frame_flags_t.VPX_EFLAG_NONE);
-            EncodeFrame(&codec, raw, frame_count++, vpx_enc_frame_flags_t.VPX_EFLAG_NONE);
+            for (int i = 0; i < 30; i++)
+                EncodeFrame(&codec, raw, frame_count++, vpx_enc_frame_flags_t.VPX_EFLAG_NONE);
 
             // Flush encoder.
             EncodeFrame(&codec, null, -1, vpx_enc_frame_flags_t.VPX_EFLAG_NONE);
@@ -94,14 +96,14 @@ namespace OptimeGBAServer
         private static unsafe int EncodeFrame(vpx_codec_ctx_t *codec, vpx_image_t *img,
                         int frame_index, vpx_enc_frame_flags_t flags) {
             int got_pkts = 0;
-            vpx_codec_iter_t *iter = null;
+            vpx_codec_iter_t iter;
             vpx_codec_cx_pkt_t *pkt = null;
             vpx_codec_err_t res =
                 vpx_codec_encode(codec, img, frame_index, 1, flags, vpx_enc_deadline_flags_t.VPX_DL_REALTIME);
             if (res != vpx_codec_err_t.VPX_CODEC_OK) throw new Exception("Failed to encode frame");
 
-            while ((pkt = vpx_codec_get_cx_data(codec, iter)) != null) {
-                got_pkts = 1;
+            while ((pkt = vpx_codec_get_cx_data(codec, &iter)) != null) {
+                got_pkts++;
 
                 if (pkt->kind == vpx_codec_cx_pkt_kind.VPX_CODEC_CX_FRAME_PKT) {
                     bool keyframe = (pkt->data.frame.flags & vpx_codec_frame_flags_t.VPX_FRAME_IS_KEY) != 0;
