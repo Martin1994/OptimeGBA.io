@@ -2,7 +2,6 @@ import * as React from "react";
 import { ActionRequest, ActionResponse, GbaKey, GbaKeyAction, KeyActionRequest } from "../models/actions";
 
 interface GbaFrontendState {
-    screenBuffer?: Blob;
     rtt: number;
     fps: number;
     worstFrameLatency: number;
@@ -32,33 +31,36 @@ export class GbaFrontend extends React.Component<{}, GbaFrontendState> {
     private lastFrameArrived: number = NaN;
     private worstFrameLatencyInWindow: number = 0;
 
-    private currentScreenBlobUrl?: string;
+    private screenCanvas = React.createRef<HTMLCanvasElement>();
+
+    private decoder: VideoDecoder;
 
     constructor(props: GbaFrontendProps) {
         super(props);
         this.state = {
-            screenBuffer: undefined,
             rtt: NaN,
             fps: 0,
             worstFrameLatency: NaN,
             status: "shutdown"
         };
+        this.decoder = new VideoDecoder({
+            error: err => console.error(err),
+            output: frame => {
+                this.screenCanvas.current?.getContext("2d")?.drawImage(frame, 0, 0);
+                frame.close();
+            }
+        });
+        this.decoder.configure({
+            codec: "vp09.02.10.10.03"
+        });
     }
 
     public render(): React.ReactNode {
-        if (this.currentScreenBlobUrl) {
-            URL.revokeObjectURL(this.currentScreenBlobUrl);
-        }
-        let screenSource = "about:blank";
-        if (this.state.screenBuffer) {
-            screenSource = URL.createObjectURL(this.state.screenBuffer);
-            this.currentScreenBlobUrl = screenSource;
-        }
         return <div id="console-container">
             <img className="console-body" src="./images/consoleBody.png" />
             <img className="console-body" src="./images/innerLogo.png" />
             <img className="console-body" style={this.indicatorStyle} src="./images/consoleIndicator.png" />
-            <img className="console-screen" src={screenSource} />
+            <canvas ref={this.screenCanvas} width={240} height={160} className="console-screen" />
             <div className="console-status">
                 <span>{`RTT: ${this.renderedRtt.padStart(6, "\u00A0")} | FPS: ${this.renderedFps.padStart(2, "\u00A0")} | Worst Frame Gap: ${this.renderedWorstFrameLatency.padStart(14, "\u00A0")}`}</span>
             </div>
@@ -124,8 +126,8 @@ export class GbaFrontend extends React.Component<{}, GbaFrontendState> {
         this.ping();
     }
 
-    private handleMessage(e: MessageEvent<Blob | string>) {
-        if (e.data instanceof Blob) {
+    private handleMessage(e: MessageEvent<ArrayBuffer | string>) {
+        if (e.data instanceof ArrayBuffer) {
             this.handleFrame(e.data);
             return;
         }
@@ -144,10 +146,12 @@ export class GbaFrontend extends React.Component<{}, GbaFrontendState> {
         }
     }
 
-    private handleFrame(frame: Blob) {
-        this.setState({
-            screenBuffer: frame
-        });
+    private handleFrame(frame: ArrayBuffer) {
+        this.decoder.decode(new EncodedVideoChunk({
+            data: frame,
+            type: "key",
+            timestamp: 0
+        }));
 
         this.frameCounter++;
 
@@ -246,7 +250,7 @@ export class GbaFrontend extends React.Component<{}, GbaFrontendState> {
             status: "connecting"
         });
 
-        ws.binaryType = "blob";
+        ws.binaryType = "arraybuffer";
 
         ws.addEventListener("open", () => {
             this.setState({
@@ -255,7 +259,7 @@ export class GbaFrontend extends React.Component<{}, GbaFrontendState> {
             this.retryTimeout = RETRY_TIMEOUT_MIN;
         });
 
-        ws.addEventListener("message", (e: MessageEvent<Blob | string>) => this.handleMessage(e));
+        ws.addEventListener("message", (e: MessageEvent<ArrayBuffer | string>) => this.handleMessage(e));
 
         const reconnect = () => {
             console.error("Reconnecting");

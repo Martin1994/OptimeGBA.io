@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 
 namespace OptimeGBAServer
 {
-    public abstract class AbstractSubjectService : IHostedService
+    public abstract class AbstractSubjectService<TPayload> : IHostedService
     {
 
         private readonly ILogger _logger;
@@ -17,10 +17,10 @@ namespace OptimeGBAServer
         private Task? _backgroundTask;
         private CancellationTokenSource? _backgroundCancellation;
 
-        private readonly Channel<ReadOnlyMemory<byte>> _buffer = Channel.CreateBounded<ReadOnlyMemory<byte>>(new BoundedChannelOptions(1) { FullMode = BoundedChannelFullMode.DropNewest });
-        public ChannelWriter<ReadOnlyMemory<byte>> BufferWriter { get => _buffer.Writer; }
+        private readonly Channel<TPayload> _buffer = Channel.CreateBounded<TPayload>(new BoundedChannelOptions(1) { FullMode = BoundedChannelFullMode.DropNewest });
+        public ChannelWriter<TPayload> BufferWriter { get => _buffer.Writer; }
 
-        private readonly ConcurrentDictionary<ChannelWriter<ReadOnlyMemory<byte>>, bool> _observers = new ConcurrentDictionary<ChannelWriter<ReadOnlyMemory<byte>>, bool>();
+        private readonly ConcurrentDictionary<ChannelWriter<TPayload>, bool> _observers = new ConcurrentDictionary<ChannelWriter<TPayload>, bool>();
         public int ObserverCount { get => _observers.Count; }
 
         public AbstractSubjectService(ILogger logger)
@@ -42,10 +42,10 @@ namespace OptimeGBAServer
         {
             while (!cancellationToken.IsCancellationRequested)
             {
-                ReadOnlyMemory<byte> buffer = await _buffer.Reader.ReadAsync(cancellationToken);
+                TPayload buffer = await _buffer.Reader.ReadAsync(cancellationToken);
 
                 // It it safe to iterate a ConcurrentDictionary while its content can be updated
-                foreach (ChannelWriter<ReadOnlyMemory<byte>> observerWriter in _observers.Keys)
+                foreach (ChannelWriter<TPayload> observerWriter in _observers.Keys)
                 {
                     observerWriter.TryWrite(buffer);
                 }
@@ -60,12 +60,12 @@ namespace OptimeGBAServer
             await (_backgroundTask ?? Task.CompletedTask);
         }
 
-        public void RegisterObserver(ChannelWriter<ReadOnlyMemory<byte>> observerWriter)
+        public void RegisterObserver(ChannelWriter<TPayload> observerWriter)
         {
             _observers.TryAdd(observerWriter, true);
         }
 
-        public void DeregisterObserver(ChannelWriter<ReadOnlyMemory<byte>> observerWriter)
+        public void DeregisterObserver(ChannelWriter<TPayload> observerWriter)
         {
             _observers.TryRemove(observerWriter, out _);
         }

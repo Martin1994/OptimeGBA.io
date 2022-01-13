@@ -33,6 +33,8 @@ namespace OptimeGBAServer.Controllers
 
         private int _frameToken = 10;
 
+        private bool _receivedKeyFrame = false;
+
         private readonly ConcurrentQueue<ReadOnlyMemory<byte>> _responseQueue = new ConcurrentQueue<ReadOnlyMemory<byte>>();
 
         public ConsoleInterfaceController(ILogger<ConsoleInterfaceController> logger, ScreenSubjectService screen, GbaHostService gba)
@@ -172,7 +174,7 @@ namespace OptimeGBAServer.Controllers
 
         private async Task SendScreen(WebSocket webSocket, CancellationToken cancellationToken)
         {
-            Channel<ReadOnlyMemory<byte>> bufferChannel = Channel.CreateBounded<ReadOnlyMemory<byte>>(
+            Channel<ScreenSubjectPayload> bufferChannel = Channel.CreateBounded<ScreenSubjectPayload>(
                 new BoundedChannelOptions(1) { FullMode = BoundedChannelFullMode.DropNewest }
             );
 
@@ -181,11 +183,18 @@ namespace OptimeGBAServer.Controllers
                 _screen.RegisterObserver(bufferChannel.Writer);
                 while (!cancellationToken.IsCancellationRequested)
                 {
-                    ReadOnlyMemory<byte> buffer = await bufferChannel.Reader.ReadAsync(cancellationToken);
+                    ScreenSubjectPayload payload = await bufferChannel.Reader.ReadAsync(cancellationToken);
                     if (_frameToken > 0)
                     {
-                        Interlocked.Decrement(ref _frameToken);
-                        await webSocket.SendAsync(buffer, WebSocketMessageType.Binary, true, cancellationToken);
+                        if (_receivedKeyFrame || payload.FrameMetadata.IsKey)
+                        {
+                            Interlocked.Decrement(ref _frameToken);
+                            if (!_receivedKeyFrame)
+                            {
+                                _receivedKeyFrame = true;
+                            }
+                            await webSocket.SendAsync(payload.Buffer, WebSocketMessageType.Binary, true, cancellationToken);
+                        }
                     }
 
                     while (_responseQueue.TryDequeue(out ReadOnlyMemory<byte> response))
@@ -204,7 +213,12 @@ namespace OptimeGBAServer.Controllers
 
         private void Respond(ConsoleInterfaceResponse response)
         {
-            _responseQueue.Enqueue(JsonSerializer.SerializeToUtf8Bytes(response, _serializerOptions));
+            _responseQueue.Enqueue(SerializeResponse(response));
+        }
+
+        private ReadOnlyMemory<byte> SerializeResponse(ConsoleInterfaceResponse response)
+        {
+            return JsonSerializer.SerializeToUtf8Bytes(response, _serializerOptions);
         }
     }
 }

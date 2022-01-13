@@ -13,15 +13,12 @@ using OptimeGBAServer.Media;
 using OptimeGBAServer.Media.LibVpx;
 using OptimeGBAServer.Media.LibVpx.Native;
 using OptimeGBAServer.Models;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Formats;
-using SixLabors.ImageSharp.Formats.Png;
-using SixLabors.ImageSharp.PixelFormats;
 
 using static OptimeGBAServer.Media.LibVpx.Native.vp8e_enc_control_id;
 using static OptimeGBAServer.Media.LibVpx.Native.vp9e_tune_content;
 using static OptimeGBAServer.Media.LibVpx.Native.vpx_codec_cx_pkt_kind;
 using static OptimeGBAServer.Media.LibVpx.Native.vpx_codec_er_flags_t;
+using static OptimeGBAServer.Media.LibVpx.Native.vpx_codec_frame_flags_t;
 using static OptimeGBAServer.Media.LibVpx.Native.vpx_enc_deadline_flags_t;
 using static OptimeGBAServer.Media.LibVpx.Native.vpx_enc_frame_flags_t;
 using static OptimeGBAServer.Media.LibVpx.Native.vpx_img_fmt_t;
@@ -87,23 +84,8 @@ namespace OptimeGBAServer
 
         private async Task RunAsync(Gba gba, CancellationToken cancellationToken)
         {
-            IImageEncoder encoder = new PngEncoder()
-            {
-                FilterMethod = PngFilterMethod.None,
-                CompressionLevel = PngCompressionLevel.BestSpeed,
-                InterlaceMethod = PngInterlaceMode.None,
-                TransparentColorMode = PngTransparentColorMode.Clear
-            };
-
-            // Allocate screen buffer
-            using Image<Rgba32> screen = new Image<Rgba32>(GBA_WIDTH, GBA_HEIGHT);
-            int bufferPoolSize = 16;
-            int bufferSize = 0x20000; // 128k
-            int bufferPoolIndex = 0;
-            byte[] screenBuffer = new byte[bufferSize * bufferPoolSize];
-
             long frames = 0;
-            using VpxImage image = new VpxImage(VPX_IMG_FMT_I420, GBA_WIDTH, GBA_HEIGHT);
+            using VpxImage screen = new VpxImage(VPX_IMG_FMT_I420, GBA_WIDTH, GBA_HEIGHT);
             using Vp9Encoder vp9 = new Vp9Encoder((ref vpx_codec_enc_cfg_t config) =>
             {
                 config.g_w = GBA_WIDTH;
@@ -117,9 +99,12 @@ namespace OptimeGBAServer
             vp9.Control(VP9E_SET_LOSSLESS, 1); // on
             vp9.Control(VP9E_SET_TUNE_CONTENT, (int)VP9E_CONTENT_SCREEN);
             vp9.Control(VP9E_SET_COLOR_RANGE, 1); // full
+            int bufferPoolSize = 16;
+            int bufferSize = 0x20000; // 128k
+            int bufferPoolIndex = 0;
+            byte[] screenBuffer = new byte[bufferSize * bufferPoolSize];
             //vp9.Control(VP9E_SET_SVC_INTER_LAYER_PRED, 1); // off all
             //vp9.Control(VP9E_SET_DISABLE_LOOPFILTER, 2); // off all
-            using Vp9Decoder decoder = new Vp9Decoder();
 
             using PeriodicTimer mainClock = new PeriodicTimer(TimeSpan.FromSeconds(SECONDS_PER_FRAME));
             Stopwatch fpsStopwatch = new Stopwatch();
@@ -133,7 +118,7 @@ namespace OptimeGBAServer
 
                 if (_screenSubjectService.ObserverCount == 0)
                 {
-                    //continue;
+                    continue;
                 }
 
                 cyclesLeft += CYCLES_PER_FRAME;
@@ -144,29 +129,25 @@ namespace OptimeGBAServer
 
                 if (gba.Ppu.Renderer.RenderingDone)
                 {
-                    // VP9 loopback
-                    _screenshot.Take(gba, image);
-                    vp9.Encode(image, frames, 1, VPX_EFLAG_NONE, VPX_DL_REALTIME);
-                    bool dirty = false;
+                    _screenshot.Take(gba, screen);
+                    vp9.Encode(screen, frames, 1, VPX_EFLAG_NONE, VPX_DL_REALTIME);
                     foreach (VpxPacket packet in vp9.GetCXData())
                     {
                         if (packet.Kind == VPX_CODEC_CX_FRAME_PKT)
                         {
-                            decoder.Decode(packet.DataAsFrame.Buf, IntPtr.Zero, 1);
-                            foreach (VpxImage decoded in decoder.GetFrame())
+                            int bufferOffset = bufferPoolIndex * bufferSize;
+                            bufferPoolIndex = (bufferOffset + 1) % bufferPoolSize;
+                            var frame = packet.DataAsFrame;
+                            frame.Buf.CopyTo(new Span<byte>(screenBuffer, bufferOffset, bufferSize));
+                            _screenSubjectService.BufferWriter.TryWrite(new ScreenSubjectPayload()
                             {
-                                Yuv420ToRgb(decoded, screen);
-                                dirty = true;
-                            }
+                                Buffer = new ReadOnlyMemory<byte>(screenBuffer, bufferOffset, (int)frame.Buf.Length),
+                                FrameMetadata = new FrameMetadata()
+                                {
+                                    IsKey = (frame.Flags & VPX_FRAME_IS_KEY) == VPX_FRAME_IS_KEY
+                                }
+                            });
                         }
-                    }
-                    if (dirty) {
-                        // _screenshot.Take(gba, screen);
-                        int bufferOffset = bufferPoolIndex * bufferSize;
-                        bufferPoolIndex = (bufferPoolIndex + 1) % bufferPoolSize;
-                        using MemoryStream encoded = new MemoryStream(screenBuffer, bufferOffset, bufferSize);
-                        screen.Save(encoded, encoder);
-                        _screenSubjectService.BufferWriter.TryWrite(new ReadOnlyMemory<byte>(screenBuffer, bufferOffset, (int)encoded.Position));
                     }
                 }
 
@@ -268,39 +249,5 @@ namespace OptimeGBAServer
             return gba;
         }
 
-        private void Yuv420ToRgb(VpxImage from, Image<Rgba32> to)
-        {
-            Debug.Assert(from.Format == VPX_IMG_FMT_I420);
-            int index = 0;
-
-            for (int j = 0; j < GbaHostService.GBA_HEIGHT; j++)
-            {
-                int indexY = 0;
-                int indexU = 0;
-                int indexV = 0;
-                Span<byte> rowY = from.GetRowY(j);
-                Span<byte> rowU = from.GetRowU(j);
-                Span<byte> rowV = from.GetRowV(j);
-                for (int i = 0; i < GbaHostService.GBA_WIDTH; i++)
-                {
-                    double c = rowY[indexY++] - 16;
-                    double d = rowU[indexU] - 128;
-                    double e = rowV[indexV] - 128;
-
-                    to[i, j] = new Rgba32(
-                        (byte)Math.Clamp(1.164 * c +     0 * d + 1.596 * e, 0, 255),
-                        (byte)Math.Clamp(1.164 * c - 0.391 * d - 0.813 * e, 0, 255),
-                        (byte)Math.Clamp(1.164 * c + 2.018 * d +     0 * e, 0, 255)
-                    );
-
-                    if (index % 2 == 1)
-                    {
-                        indexU++;
-                        indexV++;
-                    }
-                    index++;
-                }
-            }
-        }
     }
 }

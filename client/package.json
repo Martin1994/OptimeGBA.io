@@ -8,15 +8,18 @@
         "build-dev": "eslint . && webpack -c webpack.dev.js",
         "dev": "webpack serve -c webpack.dev.js"
     },
+    "dependencies": {
+        "react": "^17.0.2",
+        "react-dom": "^17.0.2"
+    },
     "devDependencies": {
         "@microsoft/eslint-config-azuretools": "^0.1.0",
+        "@types/dom-webcodecs": "^0.1.3",
         "@types/react": "^17.0.38",
         "@types/react-dom": "^17.0.11",
         "@typescript-eslint/eslint-plugin": "^5.9.0",
         "eslint": "^8.6.0",
         "eslint-plugin-import": "^2.25.4",
-        "react": "^17.0.2",
-        "react-dom": "^17.0.2",
         "ts-loader": "^9.2.6",
         "typescript": "^4.5.4",
         "webpack": "^5.65.0",
