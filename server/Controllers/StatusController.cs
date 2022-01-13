@@ -27,6 +27,7 @@ namespace OptimeGBAServer.Controllers
             return new OptimeStatus()
             {
                 Fps = _gba.Fps,
+                Bps = _gba.Bps,
                 UpTime = (DateTime.Now - Process.GetCurrentProcess().StartTime).TotalSeconds,
                 Connections = _screen.ObserverCount
             };

@@ -44,6 +44,11 @@ namespace OptimeGBAServer
         private const int FPS_SAMPLE_SIZE = 60;
         private readonly RingBuffer<double> _fpsPool = new RingBuffer<double>(FPS_SAMPLE_SIZE);
         public double Fps { get; private set; }
+
+        private const int BPS_SAMPLE_SIZE = 60;
+        private readonly RingBuffer<double> _bpsPool = new RingBuffer<double>(BPS_SAMPLE_SIZE);
+        public double Bps { get; private set; }
+
         public Gba? Emulator { get; private set; }
 
         private readonly ScreenSubjectService _screenSubjectService;
@@ -97,17 +102,18 @@ namespace OptimeGBAServer
                 config.g_threads = 8;
             });
             vp9.Control(VP9E_SET_LOSSLESS, 1); // on
+            vp9.Control(VP8E_SET_CPUUSED, -8); // [-9, 9]
             vp9.Control(VP9E_SET_TUNE_CONTENT, (int)VP9E_CONTENT_SCREEN);
             vp9.Control(VP9E_SET_COLOR_RANGE, 1); // full
+            vp9.Control(VP9E_SET_SVC_INTER_LAYER_PRED, 1); // off all
+            vp9.Control(VP9E_SET_DISABLE_LOOPFILTER, 2); // off all
             int bufferPoolSize = 16;
             int bufferSize = 0x20000; // 128k
             int bufferPoolIndex = 0;
             byte[] screenBuffer = new byte[bufferSize * bufferPoolSize];
-            //vp9.Control(VP9E_SET_SVC_INTER_LAYER_PRED, 1); // off all
-            //vp9.Control(VP9E_SET_DISABLE_LOOPFILTER, 2); // off all
 
             using PeriodicTimer mainClock = new PeriodicTimer(TimeSpan.FromSeconds(SECONDS_PER_FRAME));
-            Stopwatch fpsStopwatch = new Stopwatch();
+            Stopwatch frameStopwatch = Stopwatch.StartNew();
 
             _logger.LogInformation("GBA started.");
 
@@ -126,6 +132,8 @@ namespace OptimeGBAServer
                 {
                     cyclesLeft -= gba.StateStep();
                 }
+
+                int totalOutputBits = 0;
 
                 if (gba.Ppu.Renderer.RenderingDone)
                 {
@@ -147,6 +155,7 @@ namespace OptimeGBAServer
                                     IsKey = (frame.Flags & VPX_FRAME_IS_KEY) == VPX_FRAME_IS_KEY
                                 }
                             });
+                            totalOutputBits += frame.Buf.Length;
                         }
                     }
                 }
@@ -165,14 +174,21 @@ namespace OptimeGBAServer
                     }
                 }
 
-                double fps = Math.Clamp(1 / fpsStopwatch.Elapsed.TotalSeconds / (double)FPS_SAMPLE_SIZE, 0, 999d);
-
+                double fps = Math.Clamp(1 / frameStopwatch.Elapsed.TotalSeconds / (double)FPS_SAMPLE_SIZE, 0, 999d);
                 if (_fpsPool.PushAndPopWhenFull(fps, out double poppedFps))
                 {
                     Fps -= poppedFps;
                 }
                 Fps += fps;
-                fpsStopwatch.Restart();
+
+                double bps = (double)totalOutputBits / (double)BPS_SAMPLE_SIZE * 8;
+                if (_bpsPool.PushAndPopWhenFull(bps, out double poppedBps))
+                {
+                    Bps -= poppedBps;
+                }
+                Bps += bps;
+
+                frameStopwatch.Restart();
             }
         }
 

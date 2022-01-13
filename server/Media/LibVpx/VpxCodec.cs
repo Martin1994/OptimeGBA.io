@@ -34,7 +34,7 @@ namespace OptimeGBAServer.Media.LibVpx
 
         public void Control(vp8e_enc_control_id controlId, int data)
         {
-            vpx_codec_control_(null, controlId, __arglist(data));
+            vpx_codec_control_(_codec, controlId, __arglist(data));
             ThrowIfNotOK();
         }
 
