@@ -17,7 +17,7 @@ namespace OptimeGBAServer
         private Task? _backgroundTask;
         private CancellationTokenSource? _backgroundCancellation;
 
-        private readonly Channel<TPayload> _buffer = Channel.CreateBounded<TPayload>(new BoundedChannelOptions(1) { FullMode = BoundedChannelFullMode.DropNewest });
+        private readonly Channel<TPayload> _buffer = Channel.CreateBounded<TPayload>(new BoundedChannelOptions(10) { FullMode = BoundedChannelFullMode.DropOldest });
         public ChannelWriter<TPayload> BufferWriter { get => _buffer.Writer; }
 
         private readonly ConcurrentDictionary<ChannelWriter<TPayload>, bool> _observers = new ConcurrentDictionary<ChannelWriter<TPayload>, bool>();

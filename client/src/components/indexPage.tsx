@@ -1,11 +1,11 @@
 import * as React from "react";
-import { GbaFrontend } from "./gbaFrontend";
+import { Gba } from "./gba";
 
 export class IndexPage extends React.Component {
     public render(): React.ReactNode {
         return <React.Fragment>
             <Header>OptimeGBA<span className="decoration">.</span>io</Header>
-            <Content><GbaFrontend /></Content>
+            <Content><Gba /></Content>
             <Footer>Powered by <a href="https://github.com/Powerlated/OptimeGBA">OptimeGBA</a></Footer>
         </React.Fragment>;
     }

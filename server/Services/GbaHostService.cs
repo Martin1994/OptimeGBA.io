@@ -33,6 +33,7 @@ namespace OptimeGBAServer
         private const int CYCLES_PER_SECONDS = 0x1000000;
         private const double SECONDS_PER_FRAME = (double)CYCLES_PER_FRAME / (double)CYCLES_PER_SECONDS;
 
+        private readonly IHostApplicationLifetime _lifetime;
         private readonly ILogger _logger;
 
         private Task? _backgroundTask;
@@ -54,7 +55,7 @@ namespace OptimeGBAServer
         private readonly ScreenSubjectService _screenSubjectService;
         private readonly ScreenshotHelper _screenshot;
 
-        public GbaHostService(IConfiguration configuration, ILogger<GbaHostService> logger, ScreenSubjectService screenSubjectService, ScreenshotHelper screenshot)
+        public GbaHostService(IHostApplicationLifetime lifetime, IConfiguration configuration, ILogger<GbaHostService> logger, ScreenSubjectService screenSubjectService, ScreenshotHelper screenshot)
         {
             OptimeConfig optimeConfig = configuration.GetSection("Optime").Get<OptimeConfig>();
 
@@ -70,6 +71,7 @@ namespace OptimeGBAServer
             }
             _romPath = optimeConfig.Rom;
 
+            _lifetime = lifetime;
             _logger = logger;
             _screenSubjectService = screenSubjectService;
             _screenshot = screenshot;
@@ -82,7 +84,18 @@ namespace OptimeGBAServer
             Emulator = await ProvideGba();
 
             _backgroundCancellation = new CancellationTokenSource();
-            _backgroundTask =  Task.Factory.StartNew(async () => await RunAsync(Emulator, _backgroundCancellation.Token), creationOptions: TaskCreationOptions.LongRunning);
+            _backgroundTask =  Task.Factory.StartNew(async () =>
+            {
+                try {
+                    await RunAsync(Emulator, _backgroundCancellation.Token);
+                }
+                catch (OperationCanceledException) {}
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, ex.Message);
+                    _lifetime.StopApplication();
+                }
+            }, creationOptions: TaskCreationOptions.LongRunning);
 
             await Task.CompletedTask;
         }
@@ -90,7 +103,8 @@ namespace OptimeGBAServer
         private async Task RunAsync(Gba gba, CancellationToken cancellationToken)
         {
             long frames = 0;
-            using VpxImage screen = new VpxImage(VPX_IMG_FMT_I420, GBA_WIDTH, GBA_HEIGHT);
+
+            using VpxImage screen = new VpxImage(VPX_IMG_FMT_I444, GBA_WIDTH, GBA_HEIGHT);
             using Vp9Encoder vp9 = new Vp9Encoder((ref vpx_codec_enc_cfg_t config) =>
             {
                 config.g_w = GBA_WIDTH;
@@ -99,14 +113,16 @@ namespace OptimeGBAServer
                 config.g_timebase.den = CYCLES_PER_SECONDS;
                 config.g_lag_in_frames = 0; // Realtime output
                 config.g_error_resilient = VPX_ERROR_RESILIENT_DEFAULT;
-                config.g_threads = 8;
+                config.g_threads = (uint)Environment.ProcessorCount;
+                config.g_profile = 1; // Profile 1: YUV444 with 8 bit frames
             });
             vp9.Control(VP9E_SET_LOSSLESS, 1); // on
-            vp9.Control(VP8E_SET_CPUUSED, -8); // [-9, 9]
+            vp9.Control(VP8E_SET_CPUUSED, -5); // [-9, 9]
             vp9.Control(VP9E_SET_TUNE_CONTENT, (int)VP9E_CONTENT_SCREEN);
             vp9.Control(VP9E_SET_COLOR_RANGE, 1); // full
             vp9.Control(VP9E_SET_SVC_INTER_LAYER_PRED, 1); // off all
             vp9.Control(VP9E_SET_DISABLE_LOOPFILTER, 2); // off all
+
             int bufferPoolSize = 16;
             int bufferSize = 0x20000; // 128k
             int bufferPoolIndex = 0;
@@ -133,12 +149,12 @@ namespace OptimeGBAServer
                     cyclesLeft -= gba.StateStep();
                 }
 
-                int totalOutputBits = 0;
+                int totalOutputBytes = 0;
 
                 if (gba.Ppu.Renderer.RenderingDone)
                 {
                     _screenshot.Take(gba, screen);
-                    vp9.Encode(screen, frames, 1, VPX_EFLAG_NONE, VPX_DL_REALTIME);
+                    vp9.Encode(screen, frames, 1, VPX_EFLAG_NONE, VPX_DL_GOOD_QUALITY);
                     foreach (VpxPacket packet in vp9.GetCXData())
                     {
                         if (packet.Kind == VPX_CODEC_CX_FRAME_PKT)
@@ -152,10 +168,10 @@ namespace OptimeGBAServer
                                 Buffer = new ReadOnlyMemory<byte>(screenBuffer, bufferOffset, (int)frame.Buf.Length),
                                 FrameMetadata = new FrameMetadata()
                                 {
-                                    IsKey = (frame.Flags & VPX_FRAME_IS_KEY) == VPX_FRAME_IS_KEY
+                                    IsKey = true//(frame.Flags & VPX_FRAME_IS_KEY) == VPX_FRAME_IS_KEY
                                 }
                             });
-                            totalOutputBits += frame.Buf.Length;
+                            totalOutputBytes += frame.Buf.Length;
                         }
                     }
                 }
@@ -181,7 +197,7 @@ namespace OptimeGBAServer
                 }
                 Fps += fps;
 
-                double bps = (double)totalOutputBits / (double)BPS_SAMPLE_SIZE * 8;
+                double bps = (double)totalOutputBytes / frameStopwatch.Elapsed.TotalSeconds / (double)BPS_SAMPLE_SIZE * 8;
                 if (_bpsPool.PushAndPopWhenFull(bps, out double poppedBps))
                 {
                     Bps -= poppedBps;

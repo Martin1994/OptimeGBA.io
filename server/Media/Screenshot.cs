@@ -62,9 +62,7 @@ namespace OptimeGBAServer.Media
         {
             Debug.Assert(image.DisplayedWidth == GbaHostService.GBA_WIDTH);
             Debug.Assert(image.DisplayedHeight == GbaHostService.GBA_HEIGHT);
-            Debug.Assert(image.Format == vpx_img_fmt_t.VPX_IMG_FMT_I420);
-
-            int index = 0;
+            Debug.Assert(image.Format == vpx_img_fmt_t.VPX_IMG_FMT_I444);
 
             Span<ushort> screen = gba.Ppu.Renderer.ScreenFront;
             for (int j = 0; j < GbaHostService.GBA_HEIGHT; j++)
@@ -75,7 +73,7 @@ namespace OptimeGBAServer.Media
                 Span<byte> rowY = image.GetRowY(j);
                 Span<byte> rowU = image.GetRowU(j);
                 Span<byte> rowV = image.GetRowV(j);
-                bool chromaRow = j % 2 == 0;
+
                 for (int i = 0; i < GbaHostService.GBA_WIDTH; i++)
                 {
                     int rgb555 = screen[i + j * GbaHostService.GBA_WIDTH] & COLOR_MASK;
@@ -84,14 +82,8 @@ namespace OptimeGBAServer.Media
                     byte v = _vLut[rgb555];
 
                     rowY[indexY++] = y;
-
-                    if (chromaRow && index % 2 == 0)
-                    {
-                        rowU[indexU++] = u;
-                        rowV[indexV++] = v;
-                    }
-
-                    index++;
+                    rowU[indexU++] = u;
+                    rowV[indexV++] = v;
                 }
             }
         }

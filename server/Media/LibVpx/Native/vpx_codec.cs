@@ -42,7 +42,7 @@ namespace OptimeGBAServer.Media.LibVpx.Native
          *     The data was not valid.
          */
         [DllImport("vpx")]
-        public static extern vpx_codec_err_t vpx_codec_control_(vpx_codec_ctx_t *ctx, vp8e_enc_control_id ctrl_id, __arglist);
+        public static extern vpx_codec_err_t vpx_codec_control_(vpx_codec_ctx_t *ctx, vp8e_enc_control_id ctrl_id, int arg0);
 
         /*!\brief Destroy a codec instance
          *

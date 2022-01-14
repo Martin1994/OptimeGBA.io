@@ -15,7 +15,7 @@ namespace OptimeGBAServer.Media.LibVpx
 
             public ImageContainer(vpx_img_fmt_t format, uint width, uint height)
             {
-                Raw = vpx_img_alloc(null, format, width, height, 1);
+                Raw = vpx_img_alloc(null, format, width, height, 4);
             }
 
             protected virtual void Dispose(bool disposing)

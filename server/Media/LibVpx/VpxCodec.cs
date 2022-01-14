@@ -14,7 +14,7 @@ namespace OptimeGBAServer.Media.LibVpx
         {
             if (codec->err != VPX_CODEC_OK)
             {
-                throw new VpxException(Marshal.PtrToStringAnsi(new IntPtr(codec->err_detail)) ?? "Error without detail.", codec->err);
+                throw new VpxException(Marshal.PtrToStringAnsi(new IntPtr(codec->err_detail)) ?? $"Error with code: {codec->err}.", codec->err);
             }
         }
     }
@@ -34,7 +34,7 @@ namespace OptimeGBAServer.Media.LibVpx
 
         public void Control(vp8e_enc_control_id controlId, int data)
         {
-            vpx_codec_control_(_codec, controlId, __arglist(data));
+            vpx_codec_control_(_codec, controlId, data);
             ThrowIfNotOK();
         }
 

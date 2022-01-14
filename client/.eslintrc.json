@@ -3,8 +3,10 @@
         "@microsoft/eslint-config-azuretools"
     ],
     "rules": {
+        "@typescript-eslint/explicit-function-return-type": ["error", { "allowExpressions": true }],
         "@typescript-eslint/no-empty-interface": ["off"],
         "@typescript-eslint/no-floating-promises": ["error"],
-        "quotes": ["error", "double"]
+        "quotes": ["error", "double"],
+        "semi": ["error", "always"]
     }
 }
