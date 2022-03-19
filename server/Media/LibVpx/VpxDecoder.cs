@@ -18,12 +18,12 @@ namespace OptimeGBAServer.Media.LibVpx
             ThrowIfNotOK();
         }
 
-        public VpxDecoder(Configurator configurator) : base()
+        public VpxDecoder(Configurator configure) : base()
         {
             vpx_codec_iface_t* iface = GetIFace();
             Unsafe.InitBlockUnaligned(_config, 0, (uint)sizeof(vpx_codec_dec_cfg_t));
 
-            configurator(ref *_config);
+            configure(ref *_config);
 
             vpx_codec_dec_init(_codec, iface, _config, 0);
             ThrowIfNotOK();

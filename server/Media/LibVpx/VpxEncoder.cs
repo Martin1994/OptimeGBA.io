@@ -11,7 +11,7 @@ namespace OptimeGBAServer.Media.LibVpx
     {
         public delegate void Configurator(ref vpx_codec_enc_cfg_t config);
 
-        public VpxEncoder(Configurator configurator) : base()
+        public VpxEncoder(Configurator configure) : base()
         {
             vpx_codec_iface_t* iface = GetIFace();
             vpx_codec_err_t res = vpx_codec_enc_config_default(iface, _config, 0);
@@ -20,7 +20,7 @@ namespace OptimeGBAServer.Media.LibVpx
                 throw new VpxException("Cannot assign defaults to config.", res);
             }
 
-            configurator(ref *_config);
+            configure(ref *_config);
 
             vpx_codec_enc_init(_codec, iface, _config, 0);
             ThrowIfNotOK();
