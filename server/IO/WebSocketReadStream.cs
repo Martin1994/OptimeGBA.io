@@ -56,7 +56,8 @@ namespace OptimeGBAServer.IO
                 throw new WebSocketClosedException();
             }
 
-            if (result.EndOfMessage) {
+            if (result.EndOfMessage)
+            {
                 _aboutToClose = true;
             }
 

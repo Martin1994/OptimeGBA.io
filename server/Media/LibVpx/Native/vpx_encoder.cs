@@ -762,6 +762,7 @@ namespace OptimeGBAServer.Media.LibVpx.Native
      * encoder. The flags are specified through the
      * vpx_codec_enc_cfg::g_error_resilient variable.
      */
+    [Flags]
     public enum vpx_codec_er_flags_t
     {
         VPX_ERROR_RESILIENT_NONE = 0x0,
@@ -921,6 +922,7 @@ namespace OptimeGBAServer.Media.LibVpx.Native
      * can be used by an algorithm to provide additional detail, for example to
      * support frame types that are codec specific (MPEG-1 D-frames for example)
      */
+    [Flags]
     public enum vpx_codec_frame_flags_t
     {
         VPX_FRAME_NONE = 0x0,
@@ -934,12 +936,14 @@ namespace OptimeGBAServer.Media.LibVpx.Native
         VPX_FRAME_IS_FRAGMENT = 0x8
     }
 
+    [Flags]
     public enum vpx_enc_frame_flags_t
     {
         VPX_EFLAG_NONE,
         VPX_EFLAG_FORCE_KF
     }
 
+    [Flags]
     public enum vpx_enc_deadline_flags_t
     {
         /*!\brief deadline parameter analogous to VPx REALTIME mode. */

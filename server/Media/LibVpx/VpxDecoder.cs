@@ -33,7 +33,8 @@ namespace OptimeGBAServer.Media.LibVpx
 
         public void Decode(Span<byte> data, IntPtr userPriv, int deadline)
         {
-            fixed (byte* buffer = data) {
+            fixed (byte* buffer = data)
+            {
                 vpx_codec_decode(_codec, buffer, (uint)data.Length, userPriv.ToPointer(), deadline);
             }
             ThrowIfNotOK();

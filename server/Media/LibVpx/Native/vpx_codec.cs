@@ -131,6 +131,7 @@ namespace OptimeGBAServer.Media.LibVpx.Native
      *
      *  The available flags are specified by VPX_CODEC_USE_* defines.
      */
+    [Flags]
     public enum vpx_codec_flags_t
     {
         /* Encoder flags */

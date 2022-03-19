@@ -1,3 +1,4 @@
+using System;
 using System.Runtime.InteropServices;
 
 namespace OptimeGBAServer.Media.LibVpx.Native
@@ -30,6 +31,7 @@ namespace OptimeGBAServer.Media.LibVpx.Native
      *
      * \sa #vpx_codec_control
      */
+    [Flags]
     public enum vp8e_enc_control_id
     {
         /*!\brief Codec control function to pass an ROI map to encoder.
