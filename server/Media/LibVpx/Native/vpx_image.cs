@@ -112,7 +112,8 @@ namespace OptimeGBAServer.Media.LibVpx.Native
     }
 
     /*!\brief List of supported color spaces */
-    public enum vpx_color_space_t {
+    public enum vpx_color_space_t
+    {
         VPX_CS_UNKNOWN = 0,   /**< Unknown */
         VPX_CS_BT_601 = 1,    /**< BT.601 */
         VPX_CS_BT_709 = 2,    /**< BT.709 */
@@ -124,7 +125,8 @@ namespace OptimeGBAServer.Media.LibVpx.Native
     }
 
     /*!\brief List of supported color range */
-    public enum vpx_color_range_t {
+    public enum vpx_color_range_t
+    {
         VPX_CR_STUDIO_RANGE = 0, /**< Y [16..235], UV [16..240] */
         VPX_CR_FULL_RANGE = 1    /**< YUV/RGB [0..255] */
     }

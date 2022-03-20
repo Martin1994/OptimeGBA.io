@@ -4,7 +4,8 @@ namespace OptimeGBAServer.Media.LibVpx.Native
      *
      * The set of macros define the control functions of VP8 interface
      */
-    enum vp8_com_control_id {
+    enum vp8_com_control_id
+    {
         /*!\brief pass in an external frame into decoder to be used as reference frame
          */
         VP8_SET_REFERENCE = 1,

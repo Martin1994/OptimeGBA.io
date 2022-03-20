@@ -1,15 +1,17 @@
 using System;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using OptimeGBAServer.Models;
 
-namespace OptimeGBAServer
+namespace OptimeGBAServer.Services
 {
-    public struct ScreenSubjectPayload {
+    public struct ScreenSubjectPayload
+    {
         public ReadOnlyMemory<byte> Buffer { get; set; }
         public FrameMetadata FrameMetadata { get; set; }
     }
-    public class ScreenSubjectService : AbstractSubjectService<ScreenSubjectPayload>
+    public class ScreenSubjectService : SubjectService<ScreenSubjectPayload>
     {
-        public ScreenSubjectService(ILogger<ScreenSubjectService> logger) : base(logger) { }
+        public ScreenSubjectService(IHostApplicationLifetime lifetime, ILogger<ScreenSubjectService> logger) : base(lifetime, logger) { }
     }
 }

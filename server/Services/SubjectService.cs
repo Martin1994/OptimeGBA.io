@@ -1,5 +1,3 @@
-
-using System;
 using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Channels;
@@ -7,15 +5,11 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace OptimeGBAServer
+namespace OptimeGBAServer.Services
 {
-    public abstract class AbstractSubjectService<TPayload> : IHostedService
+    public abstract class SubjectService<TPayload> : DaemonService
     {
-
         private readonly ILogger _logger;
-
-        private Task? _backgroundTask;
-        private CancellationTokenSource? _backgroundCancellation;
 
         private readonly Channel<TPayload> _buffer = Channel.CreateBounded<TPayload>(new BoundedChannelOptions(10) { FullMode = BoundedChannelFullMode.DropOldest });
         public ChannelWriter<TPayload> BufferWriter { get => _buffer.Writer; }
@@ -23,22 +17,12 @@ namespace OptimeGBAServer
         private readonly ConcurrentDictionary<ChannelWriter<TPayload>, bool> _observers = new ConcurrentDictionary<ChannelWriter<TPayload>, bool>();
         public int ObserverCount { get => _observers.Count; }
 
-        public AbstractSubjectService(ILogger logger)
+        public SubjectService(IHostApplicationLifetime lifetime, ILogger logger) : base(lifetime, logger)
         {
             _logger = logger;
         }
 
-        public async Task StartAsync(CancellationToken cancellationToken)
-        {
-            _logger.LogInformation("Starting up...");
-
-            _backgroundCancellation = new CancellationTokenSource();
-            _backgroundTask =  Task.Factory.StartNew(async () => await RunAsync(_backgroundCancellation.Token), creationOptions: TaskCreationOptions.LongRunning);
-
-            await Task.CompletedTask;
-        }
-
-        private async Task RunAsync(CancellationToken cancellationToken)
+        protected override async Task RunAsync(CancellationToken cancellationToken)
         {
             while (!cancellationToken.IsCancellationRequested)
             {
@@ -50,14 +34,6 @@ namespace OptimeGBAServer
                     observerWriter.TryWrite(buffer);
                 }
             }
-        }
-
-        public async Task StopAsync(CancellationToken cancellationToken)
-        {
-            _logger.LogInformation("Tearing down...");
-
-            _backgroundCancellation?.Cancel();
-            await (_backgroundTask ?? Task.CompletedTask);
         }
 
         public void RegisterObserver(ChannelWriter<TPayload> observerWriter)

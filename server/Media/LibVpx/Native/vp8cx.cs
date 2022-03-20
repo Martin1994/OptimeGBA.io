@@ -665,7 +665,8 @@ namespace OptimeGBAServer.Media.LibVpx.Native
         VP8E_SET_RTC_EXTERNAL_RATECTRL,
     }
 
-    public enum vp9e_tune_content {
+    public enum vp9e_tune_content
+    {
         VP9E_CONTENT_DEFAULT,
         VP9E_CONTENT_SCREEN,
         VP9E_CONTENT_FILM,

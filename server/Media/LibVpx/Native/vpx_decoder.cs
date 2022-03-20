@@ -96,7 +96,8 @@ namespace OptimeGBAServer.Media.LibVpx.Native
      * This structure is used to pass init time configuration options to the
      * decoder.
      */
-    public struct vpx_codec_dec_cfg_t {
+    public struct vpx_codec_dec_cfg_t
+    {
         public uint threads; /**< Maximum number of threads to use, default 1 */
         public uint w;       /**< Width */
         public uint h;       /**< Height */

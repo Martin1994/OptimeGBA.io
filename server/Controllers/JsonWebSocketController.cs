@@ -12,12 +12,12 @@ using OptimeGBAServer.IO;
 
 namespace OptimeGBAServer.Controllers
 {
-    public abstract class AbstractJsonWebSocketController<TRequest> : ControllerBase where TRequest : class
+    public abstract class JsonWebSocketController<TRequest> : ControllerBase where TRequest : class
     {
         protected readonly ILogger _logger;
         protected readonly JsonSerializerOptions? _serializerOptions;
 
-        public AbstractJsonWebSocketController(ILogger logger, JsonSerializerOptions? serializerOptions = null)
+        public JsonWebSocketController(ILogger logger, JsonSerializerOptions? serializerOptions = null)
         {
             _logger = logger;
             _serializerOptions = serializerOptions;

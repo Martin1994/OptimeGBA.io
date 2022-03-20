@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 using OptimeGBA;
 using OptimeGBAServer.Media.LibVpx;
 using OptimeGBAServer.Media.LibVpx.Native;
+using OptimeGBAServer.Services;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 

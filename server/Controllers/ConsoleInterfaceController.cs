@@ -9,11 +9,12 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using OptimeGBA;
 using OptimeGBAServer.Models;
+using OptimeGBAServer.Services;
 
 namespace OptimeGBAServer.Controllers
 {
     [Route("/consoleInterface.sock")]
-    public class ConsoleInterfaceController : AbstractJsonWebSocketController<ConsoleInterfaceRequest>
+    public class ConsoleInterfaceController : JsonWebSocketController<ConsoleInterfaceRequest>
     {
         private const string KEY_ACTION_UP = "up";
         private const string KEY_ACTION_DOWN = "down";

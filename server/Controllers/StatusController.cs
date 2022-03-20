@@ -3,6 +3,7 @@ using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using OptimeGBAServer.Models;
+using OptimeGBAServer.Services;
 
 namespace OptimeGBAServer.Controllers
 {
@@ -12,12 +13,14 @@ namespace OptimeGBAServer.Controllers
     {
         private readonly ILogger _logger;
         private readonly GbaHostService _gba;
+        private readonly IGbaRenderer _renderer;
         private readonly ScreenSubjectService _screen;
 
-        public StatusController(ILogger<StatusController> logger, GbaHostService gba, ScreenSubjectService screen)
+        public StatusController(ILogger<StatusController> logger, GbaHostService gba, IGbaRenderer renderer, ScreenSubjectService screen)
         {
             _logger = logger;
             _gba = gba;
+            _renderer = renderer;
             _screen = screen;
         }
 
@@ -27,7 +30,7 @@ namespace OptimeGBAServer.Controllers
             return new OptimeStatus()
             {
                 Fps = _gba.Fps,
-                Bps = _gba.Bpf * _gba.Fps,
+                Bps = _renderer.Bpf * _gba.Fps,
                 UpTime = (DateTime.Now - Process.GetCurrentProcess().StartTime).TotalSeconds,
                 Connections = _screen.ObserverCount
             };

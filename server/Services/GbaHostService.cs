@@ -2,64 +2,44 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
-using System.Threading.Channels;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using OptimeGBA;
-using OptimeGBAServer.Collections.Generics;
+using OptimeGBAServer.Collections;
 using OptimeGBAServer.Exceptions;
 using OptimeGBAServer.Media;
-using OptimeGBAServer.Media.LibVpx;
-using OptimeGBAServer.Media.LibVpx.Native;
 using OptimeGBAServer.Models;
 
-using static OptimeGBAServer.Media.LibVpx.Native.vp8e_enc_control_id;
-using static OptimeGBAServer.Media.LibVpx.Native.vp9e_tune_content;
-using static OptimeGBAServer.Media.LibVpx.Native.vpx_codec_cx_pkt_kind;
-using static OptimeGBAServer.Media.LibVpx.Native.vpx_codec_er_flags_t;
-using static OptimeGBAServer.Media.LibVpx.Native.vpx_codec_frame_flags_t;
-using static OptimeGBAServer.Media.LibVpx.Native.vpx_enc_deadline_flags_t;
-using static OptimeGBAServer.Media.LibVpx.Native.vpx_enc_frame_flags_t;
-using static OptimeGBAServer.Media.LibVpx.Native.vpx_img_fmt_t;
 
-namespace OptimeGBAServer
+namespace OptimeGBAServer.Services
 {
-    public class GbaHostService : IHostedService
+    public class GbaHostService : DaemonService
     {
         public const int GBA_WIDTH = 240;
         public const int GBA_HEIGHT = 160;
-        private const int CYCLES_PER_FRAME = 280896;
-        private const int CYCLES_PER_SECONDS = 0x1000000;
+        public const int CYCLES_PER_FRAME = 280896;
+        public const int CYCLES_PER_SECONDS = 0x1000000;
         private const double SECONDS_PER_FRAME = (double)CYCLES_PER_FRAME / (double)CYCLES_PER_SECONDS;
 
-        private readonly IHostApplicationLifetime _lifetime;
         private readonly ILogger _logger;
-
-        private Task? _backgroundTask;
-        private CancellationTokenSource? _backgroundCancellation;
 
         private string _gbaBiosHome;
         private string _romPath;
 
-        private const int FPS_SAMPLE_SIZE = 60;
-        private readonly RingBuffer<double> _fpsPool = new RingBuffer<double>(FPS_SAMPLE_SIZE);
-        public double Fps { get; private set; }
-
-        private const int BPS_SAMPLE_SIZE = 60;
-        private readonly RingBuffer<double> _bpfPool = new RingBuffer<double>(BPS_SAMPLE_SIZE);
-        public double Bpf { get; private set; }
+        private readonly WindowAverage _fps = new WindowAverage(60);
+        public double Fps { get => _fps.Average; }
 
         public Gba? Emulator { get; private set; }
 
         private readonly ScreenSubjectService _screenSubjectService;
-        private readonly ScreenshotHelper _screenshot;
+        private readonly IGbaRenderer _renderer;
 
-        private readonly Channel<VpxImage> _emulatorScreenBuffer = Channel.CreateUnbounded<VpxImage>();
-        private readonly Channel<VpxImage> _rendererScreenBuffer = Channel.CreateUnbounded<VpxImage>();
-
-        public GbaHostService(IHostApplicationLifetime lifetime, IConfiguration configuration, ILogger<GbaHostService> logger, ScreenSubjectService screenSubjectService, ScreenshotHelper screenshot)
+        public GbaHostService(
+            IHostApplicationLifetime lifetime, IConfiguration configuration, ILogger<GbaHostService> logger,
+            IGbaRenderer renderer, ScreenSubjectService screenSubjectService, ScreenshotHelper screenshot
+        ) : base(lifetime, logger)
         {
             OptimeConfig optimeConfig = configuration.GetSection("Optime").Get<OptimeConfig>();
 
@@ -75,38 +55,14 @@ namespace OptimeGBAServer
             }
             _romPath = optimeConfig.Rom;
 
-            _lifetime = lifetime;
             _logger = logger;
             _screenSubjectService = screenSubjectService;
-            _screenshot = screenshot;
+            _renderer = renderer;
         }
 
-        public async Task StartAsync(CancellationToken cancellationToken)
+        protected override async Task RunAsync(CancellationToken cancellationToken)
         {
-            _logger.LogInformation("Starting up...");
-
-            Emulator = await ProvideGba();
-
-            _backgroundCancellation = new CancellationTokenSource();
-            _backgroundTask = Task.Run(async () =>
-            {
-                try {
-                    await Task.WhenAll(
-                        RunEmulatorAsync(Emulator, _backgroundCancellation.Token),
-                        RenderAsync(_backgroundCancellation.Token)
-                    );
-                }
-                catch (OperationCanceledException) {}
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, ex.Message);
-                    _lifetime.StopApplication();
-                }
-            });
-        }
-
-        private async Task RunEmulatorAsync(Gba gba, CancellationToken cancellationToken)
-        {
+            Gba gba = Emulator = await ProvideGba(cancellationToken);
 
             using PeriodicTimer mainClock = new PeriodicTimer(TimeSpan.FromSeconds(SECONDS_PER_FRAME));
             Stopwatch frameStopwatch = Stopwatch.StartNew();
@@ -131,9 +87,7 @@ namespace OptimeGBAServer
 
                 if (gba.Ppu.Renderer.RenderingDone)
                 {
-                    VpxImage screenBuffer = await _emulatorScreenBuffer.Reader.ReadAsync();
-                    _screenshot.Take(gba, screenBuffer);
-                    await _rendererScreenBuffer.Writer.WriteAsync(screenBuffer);
+                    await _renderer.EnqueueFrame(gba, cancellationToken);
                 }
 
                 if (gba.Mem.SaveProvider.Dirty)
@@ -142,7 +96,7 @@ namespace OptimeGBAServer
                     try
                     {
                         _logger.LogInformation("Save dirty. Flusing to disk... {0}", gba.Provider.SavPath);
-                        await File.WriteAllBytesAsync(gba.Provider.SavPath, gba.Mem.SaveProvider.GetSave());
+                        await File.WriteAllBytesAsync(gba.Provider.SavPath, gba.Mem.SaveProvider.GetSave(), cancellationToken);
                     }
                     catch
                     {
@@ -150,91 +104,13 @@ namespace OptimeGBAServer
                     }
                 }
 
-                double fps = Math.Clamp(1 / frameStopwatch.Elapsed.TotalSeconds / (double)FPS_SAMPLE_SIZE, 0, 999d);
-                if (_fpsPool.PushAndPopWhenFull(fps, out double poppedFps))
-                {
-                    Fps -= poppedFps;
-                }
-                Fps += fps;
+                _fps.AddSample(Math.Clamp(1 / frameStopwatch.Elapsed.TotalSeconds, 0, 999d));
 
                 frameStopwatch.Restart();
             }
         }
 
-        private async Task RenderAsync(CancellationToken cancellationToken)
-        {
-            await _emulatorScreenBuffer.Writer.WriteAsync(new VpxImage(VPX_IMG_FMT_I444, GBA_WIDTH, GBA_HEIGHT));
-
-            using Vp9Encoder vp9 = new Vp9Encoder((ref vpx_codec_enc_cfg_t config) =>
-            {
-                config.g_w = GBA_WIDTH;
-                config.g_h = GBA_HEIGHT;
-                config.g_timebase.num = CYCLES_PER_FRAME;
-                config.g_timebase.den = CYCLES_PER_SECONDS;
-                config.g_lag_in_frames = 0; // Realtime output
-                config.g_error_resilient = VPX_ERROR_RESILIENT_DEFAULT;
-                config.g_threads = (uint)Environment.ProcessorCount;
-                config.g_profile = 1; // Profile 1: YUV444 with 8 bit frames
-            });
-            vp9.Control(VP9E_SET_LOSSLESS, 1); // on
-            vp9.Control(VP8E_SET_CPUUSED, -5); // [-9, 9]
-            vp9.Control(VP9E_SET_TUNE_CONTENT, (int)VP9E_CONTENT_SCREEN);
-            vp9.Control(VP9E_SET_COLOR_RANGE, 1); // full
-            vp9.Control(VP9E_SET_SVC_INTER_LAYER_PRED, 1); // off all
-            vp9.Control(VP9E_SET_DISABLE_LOOPFILTER, 2); // off all
-
-            int bufferPoolSize = 16;
-            int bufferSize = 0x20000; // 128k
-            int bufferPoolIndex = 0;
-            byte[] frameBuffer = new byte[bufferSize * bufferPoolSize];
-
-            long frames = 0;
-            while (!cancellationToken.IsCancellationRequested)
-            {
-                int totalOutputBytes = 0;
-
-                VpxImage screenBuffer = await _rendererScreenBuffer.Reader.ReadAsync();
-                vp9.Encode(screenBuffer, frames, 1, VPX_EFLAG_NONE, VPX_DL_GOOD_QUALITY);
-                await _emulatorScreenBuffer.Writer.WriteAsync(screenBuffer);
-
-                foreach (VpxPacket packet in vp9.GetCXData())
-                {
-                    if (packet.Kind == VPX_CODEC_CX_FRAME_PKT)
-                    {
-                        int bufferOffset = bufferPoolIndex * bufferSize;
-                        bufferPoolIndex = (bufferOffset + 1) % bufferPoolSize;
-                        var frame = packet.DataAsFrame;
-                        frame.Buf.CopyTo(new Span<byte>(frameBuffer, bufferOffset, bufferSize));
-                        _screenSubjectService.BufferWriter.TryWrite(new ScreenSubjectPayload()
-                        {
-                            Buffer = new ReadOnlyMemory<byte>(frameBuffer, bufferOffset, (int)frame.Buf.Length),
-                            FrameMetadata = new FrameMetadata()
-                            {
-                                IsKey = true//(frame.Flags & VPX_FRAME_IS_KEY) == VPX_FRAME_IS_KEY
-                            }
-                        });
-                        totalOutputBytes += frame.Buf.Length;
-                    }
-                }
-
-                double bpf = (double)totalOutputBytes / (double)BPS_SAMPLE_SIZE * 8;
-                if (_bpfPool.PushAndPopWhenFull(bpf, out double poppedBpf))
-                {
-                    Bpf -= poppedBpf;
-                }
-                Bpf += bpf;
-            }
-        }
-
-        public async Task StopAsync(CancellationToken cancellationToken)
-        {
-            _logger.LogInformation("Tearing down...");
-
-            _backgroundCancellation?.Cancel();
-            await (_backgroundTask ?? Task.CompletedTask);
-        }
-
-        private async Task<Gba> ProvideGba()
+        private async Task<Gba> ProvideGba(CancellationToken cancellationToken)
         {
             _logger.LogInformation("Booting GBA...");
 
@@ -247,7 +123,7 @@ namespace OptimeGBAServer
             byte[] gbaBios;
             try
             {
-                gbaBios = await File.ReadAllBytesAsync(gbaBiosPath);
+                gbaBios = await File.ReadAllBytesAsync(gbaBiosPath, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -262,7 +138,7 @@ namespace OptimeGBAServer
             byte[] rom;
             try
             {
-                rom = await File.ReadAllBytesAsync(_romPath);
+                rom = await File.ReadAllBytesAsync(_romPath, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -277,7 +153,7 @@ namespace OptimeGBAServer
                 _logger.LogInformation(".sav exists, loading");
                 try
                 {
-                    sav = await File.ReadAllBytesAsync(savPath);
+                    sav = await File.ReadAllBytesAsync(savPath, cancellationToken);
                 }
                 catch (Exception ex)
                 {
