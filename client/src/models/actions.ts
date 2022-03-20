@@ -1,5 +1,5 @@
 export type ActionRequest = KeyActionRequest | FillTokenActionRequest | PingActionRequest;
-export type ActionResponse = PongActionResponse;
+export type ActionResponse = InitActionResponse | PongActionResponse;
 
 export type GbaKey = "A" | "B" | "L" | "R" | "select" | "start" | "left" | "right" | "up" | "down";
 export type GbaKeyAction = "up" | "down";
@@ -26,9 +26,16 @@ export interface PingActionRequest {
     }
 }
 
+export interface InitActionResponse {
+    action: "init";
+    initAction: {
+        codec: string;
+    };
+}
+
 export interface PongActionResponse {
     action: "pong";
     pongAction: {
         madeAt: number;
-    }
+    };
 }

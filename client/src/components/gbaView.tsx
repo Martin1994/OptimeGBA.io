@@ -1,36 +1,42 @@
 import * as React from "react";
 
 export interface GbaViewProps {
+    readonly codec: string;
     readonly rtt: number;
     readonly fps: number;
     readonly worstFrameLatency: number;
     readonly status: "shutdown" | "disconnected" | "connecting" | "connected";
 }
 
-export class GbaView extends React.Component<GbaViewProps> {
+export class GbaView extends React.PureComponent<GbaViewProps> {
 
     private readonly screenCanvasRef = React.createRef<HTMLCanvasElement>();
     private get screenDrawContext(): CanvasRenderingContext2D | null | undefined {
         return this.screenCanvasRef.current?.getContext("2d");
     }
 
-    private decoder: VideoDecoder;
+    private readonly decoder: VideoDecoder;
 
     constructor(props: GbaViewProps) {
         super(props);
-        this.state = {
-            rtt: NaN,
-            fps: 0,
-            worstFrameLatency: NaN,
-            status: "shutdown"
-        };
-        this.decoder = this.createDecoder();
+
+        this.decoder = new VideoDecoder({
+            error: err => console.error(err),
+            output: frame => {
+                this.screenDrawContext?.drawImage(frame, 0, 0);
+                frame.close();
+            }
+        });
     }
 
     /**
      * @override
      */
     public render(): React.ReactNode {
+        if (this.decoder.state === "unconfigured") {
+            this.resetDecoder();
+        }
+
         return <div id="console-container">
             <img className="console-body" src="./images/consoleBody.png" />
             <img className="console-body" src="./images/innerLogo.png" />
@@ -44,18 +50,22 @@ export class GbaView extends React.Component<GbaViewProps> {
 
     public renderScreenFrame(frame: ArrayBuffer): void {
         try {
-            this.decoder.decode(new EncodedVideoChunk({
-                data: frame,
-                type: "key",
-                timestamp: 0
-            }));
+            if (this.decoder.state === "configured") {
+                this.decoder.decode(new EncodedVideoChunk({
+                    data: frame,
+                    type: "key",
+                    timestamp: 0
+                }));
+            } else {
+                console.warn(`Decoder is not ready. Now is ${this.decoder.state}`);
+            }
         } catch (e) {
             let skip: boolean = false;
             if (e instanceof DOMException) {
                 if (e.name === "DataError") {
                     skip = true;
                 } else if (e.code === DOMException.INVALID_STATE_ERR) {
-                    this.decoder = this.createDecoder();
+                    this.resetDecoder();
                     skip = true;
                 }
             }
@@ -65,20 +75,16 @@ export class GbaView extends React.Component<GbaViewProps> {
         }
     }
 
-    private createDecoder(): VideoDecoder {
-        const decoder = new VideoDecoder({
-            error: err => console.error(err),
-            output: frame => {
-                this.screenDrawContext?.drawImage(frame, 0, 0);
-                frame.close();
-            }
-        });
+    private resetDecoder(): void {
+        this.decoder.reset();
 
-        decoder.configure({
-            codec: "vp09.01.10.08.03"
-        });
+        if (!this.props.codec) {
+            return;
+        }
 
-        return decoder;
+        this.decoder.configure({
+            codec: this.props.codec
+        });
     }
 
     private get indicatorStyle(): React.CSSProperties | undefined
@@ -114,7 +120,7 @@ export class GbaView extends React.Component<GbaViewProps> {
     }
 
     private get renderedWorstFrameLatency(): string {
-        if (isNaN(this.props.worstFrameLatency)) {
+        if (!isFinite(this.props.worstFrameLatency)) {
             return "NO DATA";
         }
 

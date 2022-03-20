@@ -9,7 +9,7 @@ export interface GbaSocketProps {
     readonly gba: Gba;
 }
 
-export class GbaSocket extends React.Component<GbaSocketProps> {
+export class GbaSocket extends React.PureComponent<GbaSocketProps> {
     private retryTimeout: number = RETRY_TIMEOUT_MIN_MS;
 
     private unloadHandler?: (e: BeforeUnloadEvent) => void = undefined;
@@ -47,7 +47,7 @@ export class GbaSocket extends React.Component<GbaSocketProps> {
         console.log("Initiating interface connection...");
 
         const ws = new WebSocket(`${location.href.substring(0, window.location.href.lastIndexOf("/") + 1).replace(/^http/, "ws")}consoleInterface.sock`);
-        this.setState({
+        this.props.gba.setState({
             status: "connecting"
         });
 
@@ -55,7 +55,7 @@ export class GbaSocket extends React.Component<GbaSocketProps> {
 
         ws.addEventListener("open", () => {
             console.log("Interface connection established.");
-            this.setState({
+            this.props.gba.setState({
                 status: "connected"
             });
             this.retryTimeout = RETRY_TIMEOUT_MIN_MS;
@@ -66,7 +66,7 @@ export class GbaSocket extends React.Component<GbaSocketProps> {
         const reconnect = (): void => {
             console.error("Reconnecting");
 
-            this.setState({
+            this.props.gba.setState({
                 status: "disconnected"
             });
 

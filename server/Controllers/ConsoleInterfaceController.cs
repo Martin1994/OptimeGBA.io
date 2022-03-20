@@ -31,6 +31,7 @@ namespace OptimeGBAServer.Controllers
 
         private readonly ScreenSubjectService _screen;
         private readonly GbaHostService _gba;
+        private readonly IGbaRenderer _renderer;
 
         private int _frameToken = 10;
 
@@ -38,14 +39,15 @@ namespace OptimeGBAServer.Controllers
 
         private readonly ConcurrentQueue<ReadOnlyMemory<byte>> _responseQueue = new ConcurrentQueue<ReadOnlyMemory<byte>>();
 
-        public ConsoleInterfaceController(ILogger<ConsoleInterfaceController> logger, ScreenSubjectService screen, GbaHostService gba)
+        public ConsoleInterfaceController(ILogger<ConsoleInterfaceController> logger, ScreenSubjectService screen, GbaHostService gba, IGbaRenderer renderer)
             : base(logger, new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase })
         {
             _screen = screen;
             _gba = gba;
+            _renderer = renderer;
         }
 
-        protected override async Task Handle(ConsoleInterfaceRequest request, CancellationToken cancellationToken)
+        protected override async Task HandleRequest(ConsoleInterfaceRequest request, CancellationToken cancellationToken)
         {
             _logger.LogDebug("Handle action: {0}", request.Action);
             switch (request.Action)
@@ -168,40 +170,28 @@ namespace OptimeGBAServer.Controllers
 
         protected override async Task SendWorker(WebSocket webSocket, CancellationToken cancellationToken)
         {
-            await Task.WhenAll(
-                SendScreen(webSocket, cancellationToken)
+            Respond(
+                new ConsoleInterfaceResponse()
+                {
+                    Action = "init",
+                    InitAction = new InitAction()
+                    {
+                        Codec = _renderer.CodecString
+                    }
+                }
             );
-        }
 
-        private async Task SendScreen(WebSocket webSocket, CancellationToken cancellationToken)
-        {
             Channel<ScreenSubjectPayload> bufferChannel = Channel.CreateBounded<ScreenSubjectPayload>(
                 new BoundedChannelOptions(1) { FullMode = BoundedChannelFullMode.DropNewest }
             );
+            _screen.RegisterObserver(bufferChannel.Writer);
 
             try
             {
-                _screen.RegisterObserver(bufferChannel.Writer);
                 while (!cancellationToken.IsCancellationRequested)
                 {
-                    ScreenSubjectPayload payload = await bufferChannel.Reader.ReadAsync(cancellationToken);
-                    if (_frameToken > 0)
-                    {
-                        if (_receivedKeyFrame || payload.FrameMetadata.IsKey)
-                        {
-                            Interlocked.Decrement(ref _frameToken);
-                            if (!_receivedKeyFrame)
-                            {
-                                _receivedKeyFrame = true;
-                            }
-                            await webSocket.SendAsync(payload.Buffer, WebSocketMessageType.Binary, true, cancellationToken);
-                        }
-                    }
-
-                    while (_responseQueue.TryDequeue(out ReadOnlyMemory<byte> response))
-                    {
-                        await webSocket.SendAsync(response, WebSocketMessageType.Text, true, cancellationToken);
-                    }
+                    await SendAllResponses(webSocket, cancellationToken);
+                    await SendScreen(webSocket, bufferChannel.Reader, cancellationToken);
                 }
             }
             // Graceful close
@@ -209,6 +199,32 @@ namespace OptimeGBAServer.Controllers
             finally
             {
                 _screen.DeregisterObserver(bufferChannel.Writer);
+            }
+        }
+
+        private async Task SendScreen(WebSocket webSocket, ChannelReader<ScreenSubjectPayload> bufferReader, CancellationToken cancellationToken)
+        {
+            ScreenSubjectPayload payload = await bufferReader.ReadAsync(cancellationToken);
+            // A simple traffic control. Client will send back a request whenever a frame is received.
+            if (_frameToken > 0)
+            {
+                if (_receivedKeyFrame || payload.FrameMetadata.IsKey)
+                {
+                    Interlocked.Decrement(ref _frameToken);
+                    if (!_receivedKeyFrame)
+                    {
+                        _receivedKeyFrame = true;
+                    }
+                    await webSocket.SendAsync(payload.Buffer, WebSocketMessageType.Binary, true, cancellationToken);
+                }
+            }
+        }
+
+        private async Task SendAllResponses(WebSocket webSocket, CancellationToken cancellationToken)
+        {
+            while (_responseQueue.TryDequeue(out ReadOnlyMemory<byte> response))
+            {
+                await webSocket.SendAsync(response, WebSocketMessageType.Text, true, cancellationToken);
             }
         }
 

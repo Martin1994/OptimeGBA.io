@@ -57,7 +57,7 @@ namespace OptimeGBAServer.Controllers
                             _logger.LogDebug("Received null. Skipped.");
                             continue;
                         }
-                        await Handle(request, cancellationToken);
+                        await HandleRequest(request, cancellationToken);
                     }
                     catch (JsonException)
                     {
@@ -80,7 +80,7 @@ namespace OptimeGBAServer.Controllers
             }
         }
 
-        protected abstract Task Handle(TRequest request, CancellationToken cancellationToken);
+        protected abstract Task HandleRequest(TRequest request, CancellationToken cancellationToken);
 
         protected abstract Task SendWorker(WebSocket webSocket, CancellationToken cancellationToken);
     }

@@ -6,7 +6,7 @@ export interface GbaKeyControlProps {
     readonly gba: Gba;
 }
 
-export class GbaKeyControl extends React.Component<GbaKeyControlProps> {
+export class GbaKeyControl extends React.PureComponent<GbaKeyControlProps> {
 
     private keyDownHandler?: (e: KeyboardEvent) => void = undefined;
     private keyUpHandler?: (e: KeyboardEvent) => void = undefined;

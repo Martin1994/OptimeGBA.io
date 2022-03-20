@@ -7,6 +7,7 @@ import { GbaKeyControl } from "./gbaKeyControl";
 const FPS_REFRESH_INTERVAL_MS: number = 1000;
 
 export interface GbaStates {
+    readonly codec: string;
     readonly rtt: number;
     readonly fps: number;
     readonly worstFrameLatency: number;
@@ -16,7 +17,7 @@ export interface GbaStates {
 export interface GbaProps {
 }
 
-export class Gba extends React.Component<GbaProps, GbaStates> {
+export class Gba extends React.PureComponent<GbaProps, GbaStates> {
     private timerId: ReturnType<typeof setTimeout> | undefined = undefined;
 
     private frameCounter: number = 0;
@@ -32,6 +33,17 @@ export class Gba extends React.Component<GbaProps, GbaStates> {
     private readonly socketRef = React.createRef<GbaSocket>();
     private get socket(): GbaSocket | null {
         return this.socketRef.current;
+    }
+
+    public constructor(props: GbaProps) {
+        super(props);
+        this.state = {
+            codec: "",
+            rtt: 0,
+            fps: 0,
+            worstFrameLatency: 0,
+            status: "shutdown"
+        };
     }
 
     /**
@@ -88,6 +100,12 @@ export class Gba extends React.Component<GbaProps, GbaStates> {
             case "pong":
                 this.setState({
                     rtt: performance.now() - message.pongAction.madeAt
+                });
+                break;
+
+            case "init":
+                this.setState({
+                    codec: message.initAction.codec
                 });
                 break;
 

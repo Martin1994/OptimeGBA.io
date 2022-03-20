@@ -4,6 +4,8 @@ namespace OptimeGBAServer.Models
     {
         public string? Action { get; set; }
 
+        public InitAction? InitAction { get; set; }
+
         public PongAction? PongAction { get; set; }
     }
 }

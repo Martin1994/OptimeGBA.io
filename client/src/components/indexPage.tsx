@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Gba } from "./gba";
 
-export class IndexPage extends React.Component {
+export class IndexPage extends React.PureComponent {
     public render(): React.ReactNode {
         return <React.Fragment>
             <Header>OptimeGBA<span className="decoration">.</span>io</Header>
@@ -11,7 +11,7 @@ export class IndexPage extends React.Component {
     }
 }
 
-class Header extends React.Component {
+class Header extends React.PureComponent {
     public render(): React.ReactNode {
         return <div id="header-container">
             <h1>{this.props.children}</h1>
@@ -19,7 +19,7 @@ class Header extends React.Component {
     }
 }
 
-class Content extends React.Component {
+class Content extends React.PureComponent {
     public render(): React.ReactNode {
         return <div id="content-container">
             {this.props.children}
@@ -27,7 +27,7 @@ class Content extends React.Component {
     }
 }
 
-class Footer extends React.Component {
+class Footer extends React.PureComponent {
     public render(): React.ReactNode {
         return <div id="footer-container">
             <div>{this.props.children}</div>
