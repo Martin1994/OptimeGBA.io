@@ -19,8 +19,18 @@ namespace OptimeGBAServer
             builder.Services.AddSingleton<ScreenSubjectService>();
             builder.Services.AddHostedService<ScreenSubjectService>(s => s.GetRequiredService<ScreenSubjectService>());
 
-            // builder.Services.AddSingleton<IGbaRenderer, Vp9RendererService>();
-            builder.Services.AddSingleton<IGbaRenderer, H264RendererService>();
+            switch (builder.Configuration["VideoEncoding"].ToString()) {
+                case "vp9":
+                    builder.Services.AddSingleton<IGbaRenderer, Vp9RendererService>();
+                    break;
+
+                case "h264":
+                    builder.Services.AddSingleton<IGbaRenderer, H264RendererService>();
+                    break;
+
+                default:
+                    throw new ArgumentException("VideoEncoding must be either \"vp9\" or \"h264\".");
+            }
             builder.Services.AddHostedService<IGbaRenderer>(s => s.GetRequiredService<IGbaRenderer>());
 
             builder.Services.AddSingleton<ScreenshotHelper>();
@@ -56,6 +66,20 @@ namespace OptimeGBAServer
                 {
                     // libvpx 1.11
                     return NativeLibrary.Load("libvpx.so.7", assembly, searchPath);
+                }
+            }
+
+            if (libraryName == "openh264")
+            {
+                if (OperatingSystem.IsLinux())
+                {
+                    // libopenh264 2.2.0
+                    return NativeLibrary.Load("libopenh264-2.2.0-linux-arm64.6.so", assembly, searchPath);
+                }
+                else if (OperatingSystem.IsWindows())
+                {
+                    // libopenh264 2.2.0
+                    return NativeLibrary.Load("openh264-2.2.0-win64.dll", assembly, searchPath);
                 }
             }
 
