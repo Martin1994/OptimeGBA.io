@@ -68,15 +68,23 @@ namespace OptimeGBAServer.Services
                 for (int i = 0; i < GbaHostService.GBA_WIDTH; i++)
                 {
                     int rgb555 = screen[i + j * GbaHostService.GBA_WIDTH] & colorMask;
-                    byte y = yLut[rgb555];
-                    rowY[indexY++] = y;
+                    rowY[indexY++] = yLut[rgb555];
 
                     if ((i & 1) == 0 && (j & 1) == 0)
                     {
-                        byte u = uLut[rgb555];
-                        byte v = vLut[rgb555];
-                        rowU[indexU++] = u;
-                        rowV[indexV++] = v;
+                        int u = 0;
+                        u += uLut[screen[i + j * GbaHostService.GBA_WIDTH] & colorMask];
+                        u += uLut[screen[1 + i + j * GbaHostService.GBA_WIDTH] & colorMask];
+                        u += uLut[screen[i + (j + 1) * GbaHostService.GBA_WIDTH] & colorMask];
+                        u += uLut[screen[1 + i + (j + 1) * GbaHostService.GBA_WIDTH] & colorMask];
+                        rowU[indexU++] = (byte)(u >> 2);
+
+                        int v = 0;
+                        v += vLut[screen[i + j * GbaHostService.GBA_WIDTH] & colorMask];
+                        v += vLut[screen[1 + i + j * GbaHostService.GBA_WIDTH] & colorMask];
+                        v += vLut[screen[i + (j + 1) * GbaHostService.GBA_WIDTH] & colorMask];
+                        v += vLut[screen[1 + i + (j + 1) * GbaHostService.GBA_WIDTH] & colorMask];
+                        rowV[indexV++] = (byte)(v >> 2);
                     }
                 }
             }

@@ -4,44 +4,40 @@ namespace OptimeGBAServer.Media.LibOpenH264
 {
     public unsafe class OpenH264SourcePictureI420 : OpenH264SourcePicture
     {
-        public OpenH264SourcePictureI420(int width, int height) : base(width * height * 3 / 2)
+        public OpenH264SourcePictureI420(int width, int height) : base(width, height)
         {
-            _picture->iPicWidth = width;
-            _picture->iPicHeight = height;
             _picture->iColorFormat = videoFormatI420;
-
-            _picture->iStride[0] = width;
-            _picture->iStride[1] = width >> 1;
-            _picture->iStride[2] = width >> 1;
-            _picture->iStride[3] = 0;
-
-            byte* dataStart = _buffer;
-
-            _picture->pData[0] = dataStart;
-            dataStart += (width * height);
-
-            _picture->pData[1] = dataStart;
-            dataStart += (width * height) >> 2;
-
-            _picture->pData[2] = dataStart;
-            dataStart += (width * height) >> 2;
-
-            _picture->pData[3] = null;
         }
 
-        protected override int GetDataLength(int index)
+        protected override int GetXChromaShift(int index)
         {
             switch (index)
             {
                 case 0:
-                    return PicWidth * PicHeight;
+                    return 0;
 
                 case 1:
                 case 2:
-                    return (PicWidth * PicHeight) >> 2;
+                    return 1;
 
                 default:
+                    return 4096;
+            }
+        }
+
+        protected override int GetYChromaShift(int index)
+        {
+            switch (index)
+            {
+                case 0:
                     return 0;
+
+                case 1:
+                case 2:
+                    return 1;
+
+                default:
+                    return 4096;
             }
         }
     }
