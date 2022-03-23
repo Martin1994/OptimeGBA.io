@@ -69,7 +69,7 @@ export class GbaView extends React.PureComponent<GbaViewProps> {
         this.decoder = new VideoDecoder({
             error: err => console.error("Decoder threw an error.", err),
             output: frame => {
-                this.screenDrawContext?.drawImage(frame, 0, 0);
+                this.screenDrawContext?.drawImage(frame, 0, 0, 240, 160);
                 frame.close();
             }
         });

@@ -28,6 +28,10 @@ namespace OptimeGBAServer
                     builder.Services.AddSingleton<IGbaRenderer, H264RendererService>();
                     break;
 
+                case "h264highres":
+                    builder.Services.AddSingleton<IGbaRenderer, H264HighResRendererService>();
+                    break;
+
                 default:
                     throw new ArgumentException("VideoEncoding must be either \"vp9\" or \"h264\".");
             }

@@ -23,12 +23,12 @@ namespace OptimeGBAServer.Services
     {
         private readonly ILogger _logger;
 
-        private readonly ScreenshotHelper _screenshot;
+        protected readonly ScreenshotHelper _screenshot;
 
         public override string CodecString => "avc1.64001f";
 
         public H264RendererService(
-            IHostApplicationLifetime lifetime, IConfiguration configuration, ILogger<H264RendererService> logger,
+            IHostApplicationLifetime lifetime, ILogger<H264RendererService> logger,
             ScreenSubjectService screenSubjectService, ScreenshotHelper screenshot
         ) : base(lifetime, logger, screenSubjectService)
         {
@@ -95,9 +95,9 @@ namespace OptimeGBAServer.Services
             return new OpenH264SourcePictureI420(GBA_WIDTH, GBA_HEIGHT);
         }
 
-        protected override async Task RunAsync(CancellationToken cancellationToken)
+        protected virtual OpenH264Encoder CreateEncoder()
         {
-            using OpenH264Encoder encoder = new OpenH264Encoder((ref TagEncParamExt config) =>
+            return new OpenH264Encoder((ref TagEncParamExt config) =>
             {
                 config.iPicWidth = GBA_WIDTH;
                 config.iPicHeight = GBA_HEIGHT;
@@ -106,6 +106,11 @@ namespace OptimeGBAServer.Services
                 config.iTargetBitrate = 262144;
                 config.iMultipleThreadIdc = 1; // Off
             });
+        }
+
+        protected override async Task RunAsync(CancellationToken cancellationToken)
+        {
+            using OpenH264Encoder encoder = CreateEncoder();
 
             EVideoFormatType videoFormat = videoFormatI420;
             encoder.SetOption(ENCODER_OPTION_DATAFORMAT, ref videoFormat);
