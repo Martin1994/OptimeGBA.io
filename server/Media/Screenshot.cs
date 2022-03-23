@@ -3,8 +3,6 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using OptimeGBA;
-using OptimeGBAServer.Media.LibVpx;
-using OptimeGBAServer.Media.LibVpx.Native;
 using OptimeGBAServer.Services;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
@@ -14,12 +12,12 @@ namespace OptimeGBAServer.Media
     public class ScreenshotHelper
     {
         private const int COLOR_COUNT = 0x8000; // 15 bit color;
-        private const int COLOR_MASK = 0x7FFF;
+        public const int COLOR_MASK = 0x7FFF;
         private readonly Color[] _colorLut = new Color[COLOR_COUNT];
         private readonly Rgba32[] _rgbLut = new Rgba32[COLOR_COUNT];
-        private readonly byte[] _yLut = new byte[COLOR_COUNT];
-        private readonly byte[] _uLut = new byte[COLOR_COUNT];
-        private readonly byte[] _vLut = new byte[COLOR_COUNT];
+        public readonly byte[] YLut = new byte[COLOR_COUNT];
+        public readonly byte[] ULut = new byte[COLOR_COUNT];
+        public readonly byte[] VLut = new byte[COLOR_COUNT];
 
         public ScreenshotHelper()
         {
@@ -29,9 +27,9 @@ namespace OptimeGBAServer.Media
                 _colorLut[i] = Rgb555ToRgba32(i);
                 _rgbLut[i] = Rgb555ToRgba32(i);
                 Rgba32 yuv = Rgb555ToYuv420(i);
-                _yLut[i] = yuv.R;
-                _uLut[i] = yuv.G;
-                _vLut[i] = yuv.B;
+                YLut[i] = yuv.R;
+                ULut[i] = yuv.G;
+                VLut[i] = yuv.B;
             }
         }
 
@@ -56,36 +54,6 @@ namespace OptimeGBAServer.Media
             for (int i = 0; i < 0x200; i++)
             {
                 palette[i] = _colorLut[innerPalette[i] & COLOR_MASK];
-            }
-        }
-
-        public void Take(Gba gba, VpxImage image)
-        {
-            Debug.Assert(image.DisplayedWidth == GbaHostService.GBA_WIDTH);
-            Debug.Assert(image.DisplayedHeight == GbaHostService.GBA_HEIGHT);
-            Debug.Assert(image.Format == vpx_img_fmt_t.VPX_IMG_FMT_I444);
-
-            Span<ushort> screen = gba.Ppu.Renderer.ScreenFront;
-            for (int j = 0; j < GbaHostService.GBA_HEIGHT; j++)
-            {
-                int indexY = 0;
-                int indexU = 0;
-                int indexV = 0;
-                Span<byte> rowY = image.GetRowY(j);
-                Span<byte> rowU = image.GetRowU(j);
-                Span<byte> rowV = image.GetRowV(j);
-
-                for (int i = 0; i < GbaHostService.GBA_WIDTH; i++)
-                {
-                    int rgb555 = screen[i + j * GbaHostService.GBA_WIDTH] & COLOR_MASK;
-                    byte y = _yLut[rgb555];
-                    byte u = _uLut[rgb555];
-                    byte v = _vLut[rgb555];
-
-                    rowY[indexY++] = y;
-                    rowU[indexU++] = u;
-                    rowV[indexV++] = v;
-                }
             }
         }
 

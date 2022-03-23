@@ -25,7 +25,7 @@ namespace OptimeGBAServer.Media.LibVpx
                 Current = default;
             }
 
-            public void Dispose() {}
+            public void Dispose() { }
 
             public bool MoveNext()
             {

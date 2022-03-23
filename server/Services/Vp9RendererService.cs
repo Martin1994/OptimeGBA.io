@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
@@ -39,9 +40,39 @@ namespace OptimeGBAServer.Services
             _screenshot = screenshot;
         }
 
-        protected override void SnapshotScreen(Gba gba, VpxImage screenBuffer)
+        protected override void SnapshotScreen(Gba gba, VpxImage image)
         {
-            _screenshot.Take(gba, screenBuffer);
+            Debug.Assert(image.DisplayedWidth == GbaHostService.GBA_WIDTH);
+            Debug.Assert(image.DisplayedHeight == GbaHostService.GBA_HEIGHT);
+            Debug.Assert(image.Format == vpx_img_fmt_t.VPX_IMG_FMT_I444);
+
+            int colorMask = ScreenshotHelper.COLOR_MASK;
+            byte[] yLut = _screenshot.YLut;
+            byte[] uLut = _screenshot.ULut;
+            byte[] vLut = _screenshot.VLut;
+
+            Span<ushort> screen = gba.Ppu.Renderer.ScreenFront;
+            for (int j = 0; j < GbaHostService.GBA_HEIGHT; j++)
+            {
+                int indexY = 0;
+                int indexU = 0;
+                int indexV = 0;
+                Span<byte> rowY = image.GetRowY(j);
+                Span<byte> rowU = image.GetRowU(j);
+                Span<byte> rowV = image.GetRowV(j);
+
+                for (int i = 0; i < GbaHostService.GBA_WIDTH; i++)
+                {
+                    int rgb555 = screen[i + j * GbaHostService.GBA_WIDTH] & colorMask;
+                    byte y = yLut[rgb555];
+                    byte u = uLut[rgb555];
+                    byte v = vLut[rgb555];
+
+                    rowY[indexY++] = y;
+                    rowU[indexU++] = u;
+                    rowV[indexV++] = v;
+                }
+            }
         }
 
         protected override VpxImage ProvideScreenBuffer()
@@ -92,7 +123,7 @@ namespace OptimeGBAServer.Services
                         frame.Buf.CopyTo(new Span<byte>(frameBuffer, bufferOffset, bufferSize));
                         FlushFrame(new ScreenSubjectPayload()
                         {
-                            Buffer = new ReadOnlyMemory<byte>(frameBuffer, bufferOffset, (int)frame.Buf.Length),
+                            Buffer = new ReadOnlyMemory<byte>(frameBuffer, bufferOffset, frame.Buf.Length),
                             FrameMetadata = new FrameMetadata()
                             {
                                 IsKey = true//(frame.Flags & VPX_FRAME_IS_KEY) == VPX_FRAME_IS_KEY

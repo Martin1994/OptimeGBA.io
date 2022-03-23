@@ -12,7 +12,27 @@ namespace OptimeGBAServer.Media.LibOpenH264
 
         private readonly ISVCEncoder* _encoder;
 
-        public delegate void Configurator(ref TagEncParamExt config);
+        public delegate void Configurator(ref TagEncParamBase config);
+        public delegate void ExtConfigurator(ref TagEncParamExt config);
+
+        public OpenH264Encoder(ExtConfigurator configure)
+        {
+            fixed (ISVCEncoder** encoderPtr = &_encoder)
+            {
+                WelsCreateSVCEncoder(encoderPtr).OpenH264AssertError();
+                if (encoderPtr == null)
+                {
+                    throw new OpenH264Exception(CM_RETURN.cmMallocMemeError);
+                }
+
+                TagEncParamExt config;
+                _encoder->GetDefaultParams(&config).OpenH264AssertError();
+                configure(ref config);
+
+                _encoder->InitializeExt(&config).OpenH264AssertError();
+                _initialized = true;
+            }
+        }
 
         public OpenH264Encoder(Configurator configure)
         {
@@ -24,11 +44,10 @@ namespace OptimeGBAServer.Media.LibOpenH264
                     throw new OpenH264Exception(CM_RETURN.cmMallocMemeError);
                 }
 
-                TagEncParamExt config;
-                _encoder->GetDefaultParams(&config);
+                TagEncParamBase config = default;
                 configure(ref config);
 
-                _encoder->InitializeExt(&config);
+                _encoder->Initialize(&config).OpenH264AssertError();
                 _initialized = true;
             }
         }
@@ -49,31 +68,24 @@ namespace OptimeGBAServer.Media.LibOpenH264
             }
         }
 
-        public void EncodeFrame(ref SSourcePicture sourcePicture, ref SFrameBSInfo info)
+        public void EncodeFrame(OpenH264SourcePicture sourcePicture, OpenH264FrameBSInfo info)
         {
-            fixed (SFrameBSInfo* infoPtr = &info)
-            fixed (SSourcePicture* sourcePicturePtr = &sourcePicture)
-            {
-                _encoder->EncodeFrame(sourcePicturePtr, infoPtr).OpenH264AssertError();
-            }
+            _encoder->EncodeFrame(sourcePicture.Pointer, info.Pointer).OpenH264AssertError();
         }
 
-        public void EncodeParameterSets(ref SFrameBSInfo info)
+        public void EncodeParameterSets(OpenH264FrameBSInfo info)
         {
-            fixed (SFrameBSInfo* infoPtr = &info)
-            {
-                _encoder->EncodeParameterSets(infoPtr).OpenH264AssertError();
-            }
+            _encoder->EncodeParameterSets(info.Pointer).OpenH264AssertError();
         }
 
         public void ForceIntraFrame(bool idr)
         {
-            _encoder->ForceIntraFrame(idr ? (byte)0 : (byte)1).OpenH264AssertError();
+            _encoder->ForceIntraFrame(idr ? (byte)1 : (byte)0).OpenH264AssertError();
         }
 
         public void ForceIntraFrame(bool idr, int layerId)
         {
-            _encoder->ForceIntraFrame(idr ? (byte)0 : (byte)1, layerId).OpenH264AssertError();
+            _encoder->ForceIntraFrame(idr ? (byte)1 : (byte)0, layerId).OpenH264AssertError();
         }
 
         protected virtual void Dispose(bool disposing)

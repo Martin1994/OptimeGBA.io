@@ -15,25 +15,18 @@ export class GbaView extends React.PureComponent<GbaViewProps> {
         return this.screenCanvasRef.current?.getContext("2d");
     }
 
-    private readonly decoder: VideoDecoder;
+    private decoder?: VideoDecoder;
 
     constructor(props: GbaViewProps) {
         super(props);
-
-        this.decoder = new VideoDecoder({
-            error: err => console.error(err),
-            output: frame => {
-                this.screenDrawContext?.drawImage(frame, 0, 0);
-                frame.close();
-            }
-        });
     }
 
     /**
      * @override
      */
     public render(): React.ReactNode {
-        if (this.decoder.state === "unconfigured") {
+        if (!this.decoder && this.props.codec) {
+            console.log(`Initializing decoder with codec ${this.props.codec}`);
             this.resetDecoder();
         }
 
@@ -50,18 +43,15 @@ export class GbaView extends React.PureComponent<GbaViewProps> {
 
     public renderScreenFrame(frame: ArrayBuffer): void {
         try {
-            if (this.decoder.state === "configured") {
-                this.decoder.decode(new EncodedVideoChunk({
-                    data: frame,
-                    type: "key",
-                    timestamp: 0
-                }));
-            } else {
-                console.warn(`Decoder is not ready. Now is ${this.decoder.state}`);
-            }
+            this.decoder?.decode(new EncodedVideoChunk({
+                data: frame,
+                type: "key",
+                timestamp: 0
+            }));
         } catch (e) {
             let skip: boolean = false;
             if (e instanceof DOMException) {
+                console.warn("Decoder failed to decode a frame.", e);
                 if (e.name === "DataError") {
                     skip = true;
                 } else if (e.code === DOMException.INVALID_STATE_ERR) {
@@ -76,7 +66,13 @@ export class GbaView extends React.PureComponent<GbaViewProps> {
     }
 
     private resetDecoder(): void {
-        this.decoder.reset();
+        this.decoder = new VideoDecoder({
+            error: err => console.error("Decoder threw an error.", err),
+            output: frame => {
+                this.screenDrawContext?.drawImage(frame, 0, 0);
+                frame.close();
+            }
+        });
 
         if (!this.props.codec) {
             return;

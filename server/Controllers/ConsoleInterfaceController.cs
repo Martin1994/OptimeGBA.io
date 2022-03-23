@@ -71,16 +71,14 @@ namespace OptimeGBAServer.Controllers
                     break;
 
                 case "ping":
-                    Respond(
-                        new ConsoleInterfaceResponse()
+                    Respond(new ConsoleInterfaceResponse()
+                    {
+                        Action = "pong",
+                        PongAction = new PongAction()
                         {
-                            Action = "pong",
-                            PongAction = new PongAction()
-                            {
-                                MadeAt = request.PingAction?.MadeAt ?? 0
-                            }
+                            MadeAt = request.PingAction?.MadeAt ?? 0
                         }
-                    );
+                    });
                     break;
 
                 default:
@@ -170,16 +168,14 @@ namespace OptimeGBAServer.Controllers
 
         protected override async Task SendWorker(WebSocket webSocket, CancellationToken cancellationToken)
         {
-            Respond(
-                new ConsoleInterfaceResponse()
+            Respond(new ConsoleInterfaceResponse()
+            {
+                Action = "init",
+                InitAction = new InitAction()
                 {
-                    Action = "init",
-                    InitAction = new InitAction()
-                    {
-                        Codec = _renderer.CodecString
-                    }
+                    Codec = _renderer.CodecString
                 }
-            );
+            });
 
             Channel<ScreenSubjectPayload> bufferChannel = Channel.CreateBounded<ScreenSubjectPayload>(
                 new BoundedChannelOptions(1) { FullMode = BoundedChannelFullMode.DropNewest }

@@ -747,7 +747,7 @@ namespace OptimeGBAServer.Media.LibOpenH264.Native
 
     public unsafe partial struct SSourcePicture
     {
-        public int iColorFormat;
+        public EVideoFormatType iColorFormat;
 
         [NativeTypeName("int [4]")]
         public fixed int iStride[4];

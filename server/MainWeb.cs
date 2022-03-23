@@ -19,7 +19,8 @@ namespace OptimeGBAServer
             builder.Services.AddSingleton<ScreenSubjectService>();
             builder.Services.AddHostedService<ScreenSubjectService>(s => s.GetRequiredService<ScreenSubjectService>());
 
-            builder.Services.AddSingleton<IGbaRenderer, Vp9RendererService>();
+            // builder.Services.AddSingleton<IGbaRenderer, Vp9RendererService>();
+            builder.Services.AddSingleton<IGbaRenderer, H264RendererService>();
             builder.Services.AddHostedService<IGbaRenderer>(s => s.GetRequiredService<IGbaRenderer>());
 
             builder.Services.AddSingleton<ScreenshotHelper>();

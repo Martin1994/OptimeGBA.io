@@ -18,6 +18,9 @@ export class GbaKeyControl extends React.PureComponent<GbaKeyControlProps> {
         return null;
     }
 
+    /**
+     * @overrides
+     */
     public componentDidMount(): void {
         this.keyDownHandler = (e: KeyboardEvent) => {
             if (this.mapKeyAction(e.code, "down", e.repeat)) {
@@ -34,6 +37,9 @@ export class GbaKeyControl extends React.PureComponent<GbaKeyControlProps> {
         window.addEventListener("keyup", this.keyUpHandler);
     }
 
+    /**
+     * @overrides
+     */
     public componentWillUnmount(): void {
         if (this.keyDownHandler) {
             window.removeEventListener("keydown", this.keyDownHandler);
@@ -44,6 +50,9 @@ export class GbaKeyControl extends React.PureComponent<GbaKeyControlProps> {
         }
     }
 
+    /**
+     * @returns Prevent default.
+     */
     private mapKeyAction(key: string, action: GbaKeyAction, repeat: boolean): boolean {
         switch (key) {
             case "KeyZ":
