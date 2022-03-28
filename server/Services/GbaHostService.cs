@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
@@ -34,11 +35,13 @@ namespace OptimeGBAServer.Services
         public Gba? Emulator { get; private set; }
 
         private readonly ScreenSubjectService _screenSubjectService;
+        private readonly SoundSubjectService _soundSubjectService;
         private readonly IGbaRenderer _renderer;
 
         public GbaHostService(
             IHostApplicationLifetime lifetime, IConfiguration configuration, ILogger<GbaHostService> logger,
-            IGbaRenderer renderer, ScreenSubjectService screenSubjectService, ScreenshotHelper screenshot
+            IGbaRenderer renderer, ScreenSubjectService screenSubjectService, ScreenshotHelper screenshot,
+            SoundSubjectService soundSubjectService
         ) : base(lifetime, logger)
         {
             OptimeConfig optimeConfig = configuration.GetSection("Optime").Get<OptimeConfig>();
@@ -57,6 +60,7 @@ namespace OptimeGBAServer.Services
 
             _logger = logger;
             _screenSubjectService = screenSubjectService;
+            _soundSubjectService = soundSubjectService;
             _renderer = renderer;
         }
 
@@ -108,6 +112,26 @@ namespace OptimeGBAServer.Services
 
                 frameStopwatch.Restart();
             }
+        }
+
+        private byte[] _soundBuffer = new byte[0x200000]; // 2048k
+        private int _soundBufferOffset = 0;
+        private void FlushSound(short[] stereo16BitInterleavedData)
+        {
+            Span<byte> source = MemoryMarshal.Cast<short, byte>(stereo16BitInterleavedData.AsSpan());
+
+            if (_soundBufferOffset + source.Length >= _soundBuffer.Length) {
+                _soundBufferOffset = 0;
+            }
+            Memory<byte> buffer = new Memory<byte>(_soundBuffer, _soundBufferOffset, source.Length);
+            _soundBufferOffset += stereo16BitInterleavedData.Length;
+
+            source.CopyTo(buffer.Span);
+
+            _soundSubjectService.BufferWriter.TryWrite(new SoundSubjectPayload()
+            {
+                Buffer = buffer
+            });
         }
 
         private async Task<Gba> ProvideGba(CancellationToken cancellationToken)
@@ -167,7 +191,7 @@ namespace OptimeGBAServer.Services
 
             _logger.LogInformation("Loading GBA file");
 
-            var provider = new ProviderGba(gbaBios, rom, savPath, x => {});
+            var provider = new ProviderGba(gbaBios, rom, savPath, FlushSound);
             provider.BootBios = true;
 
             Gba gba = new Gba(provider);

@@ -1,12 +1,19 @@
 import * as React from "react";
-import { ActionRequest, ActionResponse } from "../models/actions";
-import { Gba } from "./gba";
+import { ActionRequest, ActionResponse, FrameType } from "../models/actions";
+import { GbaSocketStatus } from "./gba";
 
 const RETRY_TIMEOUT_MIN_MS: number = 1000;
 const RETRY_TIMEOUT_MAX_MS: number = 60000;
 
+export type GbaSocketStatusEvent = (state: GbaSocketStatus) => void;
+export type GbaFrameEvent = (frame: ArrayBuffer) => void;
+export type GbaResponseEvent = (message: ActionResponse) => void;
+
 export interface GbaSocketProps {
-    readonly gba: Gba;
+    readonly onStatus: GbaSocketStatusEvent;
+    readonly onScreenFrame: GbaFrameEvent;
+    readonly onSoundFrame: GbaFrameEvent;
+    readonly onMessageEvent: GbaResponseEvent;
 }
 
 export class GbaSocket extends React.PureComponent<GbaSocketProps> {
@@ -14,6 +21,7 @@ export class GbaSocket extends React.PureComponent<GbaSocketProps> {
 
     private unloadHandler?: (e: BeforeUnloadEvent) => void = undefined;
     private ws?: WebSocket = undefined;
+    private nextFrameType: FrameType = "screen";
 
     /**
      * @overrides
@@ -47,17 +55,13 @@ export class GbaSocket extends React.PureComponent<GbaSocketProps> {
         console.log("Initiating interface connection...");
 
         const ws = new WebSocket(`${location.href.substring(0, window.location.href.lastIndexOf("/") + 1).replace(/^http/, "ws")}consoleInterface.sock`);
-        this.props.gba.setState({
-            status: "connecting"
-        });
+        this.props.onStatus("connecting");
 
         ws.binaryType = "arraybuffer";
 
         ws.addEventListener("open", () => {
             console.log("Interface connection established.");
-            this.props.gba.setState({
-                status: "connected"
-            });
+            this.props.onStatus("connected");
             this.retryTimeout = RETRY_TIMEOUT_MIN_MS;
         });
 
@@ -66,9 +70,7 @@ export class GbaSocket extends React.PureComponent<GbaSocketProps> {
         const reconnect = (): void => {
             console.error("Reconnecting");
 
-            this.props.gba.setState({
-                status: "disconnected"
-            });
+            this.props.onStatus("disconnected");
 
             setTimeout((): void => {
                 this.ws = this.initiateInterfaceCommunication();
@@ -93,11 +95,21 @@ export class GbaSocket extends React.PureComponent<GbaSocketProps> {
 
     private handleMessage(e: MessageEvent<ArrayBuffer | string>): void {
         if (e.data instanceof ArrayBuffer) {
-            this.props.gba.handleFrame(e.data);
+            if (this.nextFrameType === "screen") {
+                this.props.onScreenFrame(e.data);
+            } else {
+                this.props.onSoundFrame(e.data);
+            }
             return;
         }
 
         const message: ActionResponse = JSON.parse(e.data) as ActionResponse;
-        this.props.gba.handleMessage(message);
+
+        if (message.action === "frame") {
+            this.nextFrameType = message.frameAction.type;
+            return;
+        }
+
+        this.props.onMessageEvent(message);
     }
 }

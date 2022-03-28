@@ -30,6 +30,7 @@ namespace OptimeGBAServer.Controllers
         private const string KEY_DOWN = "down";
 
         private readonly ScreenSubjectService _screen;
+        private readonly SoundSubjectService _sound;
         private readonly GbaHostService _gba;
         private readonly IGbaRenderer _renderer;
 
@@ -39,10 +40,14 @@ namespace OptimeGBAServer.Controllers
 
         private readonly ConcurrentQueue<ReadOnlyMemory<byte>> _responseQueue = new ConcurrentQueue<ReadOnlyMemory<byte>>();
 
-        public ConsoleInterfaceController(ILogger<ConsoleInterfaceController> logger, ScreenSubjectService screen, GbaHostService gba, IGbaRenderer renderer)
-            : base(logger, new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase })
+        public ConsoleInterfaceController(
+            ILogger<ConsoleInterfaceController> logger,
+            ScreenSubjectService screen, SoundSubjectService sound,
+            GbaHostService gba, IGbaRenderer renderer
+        ) : base(logger, new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase })
         {
             _screen = screen;
+            _sound = sound;
             _gba = gba;
             _renderer = renderer;
         }
@@ -177,46 +182,87 @@ namespace OptimeGBAServer.Controllers
                 }
             });
 
-            Channel<ScreenSubjectPayload> bufferChannel = Channel.CreateBounded<ScreenSubjectPayload>(
+            Channel<ScreenSubjectPayload> screenBufferChannel = Channel.CreateBounded<ScreenSubjectPayload>(
                 new BoundedChannelOptions(1) { FullMode = BoundedChannelFullMode.DropNewest }
             );
-            _screen.RegisterObserver(bufferChannel.Writer);
+            _screen.RegisterObserver(screenBufferChannel.Writer);
+
+            Channel<SoundSubjectPayload> soundBufferChannel = Channel.CreateBounded<SoundSubjectPayload>(
+                new BoundedChannelOptions(128) { FullMode = BoundedChannelFullMode.DropNewest }
+            );
+            _sound.RegisterObserver(soundBufferChannel.Writer);
 
             try
             {
                 while (!cancellationToken.IsCancellationRequested)
                 {
+                    await Task.WhenAny(
+                        screenBufferChannel.Reader.WaitToReadAsync(cancellationToken).AsTask(),
+                        soundBufferChannel.Reader.WaitToReadAsync(cancellationToken).AsTask()
+                    );
                     await SendAllResponses(webSocket, cancellationToken);
-                    await SendScreen(webSocket, bufferChannel.Reader, cancellationToken);
+                    await SendScreen(webSocket, screenBufferChannel.Reader, cancellationToken);
+                    await SendSound(webSocket, soundBufferChannel.Reader, cancellationToken);
                 }
             }
             // Graceful close
             catch (OperationCanceledException) { }
             finally
             {
-                _screen.DeregisterObserver(bufferChannel.Writer);
+                _screen.DeregisterObserver(screenBufferChannel.Writer);
+                _sound.DeregisterObserver(soundBufferChannel.Writer);
             }
         }
 
-        private async Task SendScreen(WebSocket webSocket, ChannelReader<ScreenSubjectPayload> bufferReader, CancellationToken cancellationToken)
+        private async ValueTask SendScreen(WebSocket webSocket, ChannelReader<ScreenSubjectPayload> bufferReader, CancellationToken cancellationToken)
         {
-            ScreenSubjectPayload payload = await bufferReader.ReadAsync(cancellationToken);
-            // A simple traffic control. Client will send back a request whenever a frame is received.
-            if (_frameToken > 0)
+            while (bufferReader.TryRead(out ScreenSubjectPayload payload))
             {
-                if (_receivedKeyFrame || payload.FrameMetadata.IsKey)
+                // A simple traffic control. Client will send back a request whenever a frame is received.
+                if (_frameToken > 0)
                 {
-                    Interlocked.Decrement(ref _frameToken);
-                    if (!_receivedKeyFrame)
+                    if (_receivedKeyFrame || payload.FrameMetadata.IsKey)
                     {
-                        _receivedKeyFrame = true;
+                        Interlocked.Decrement(ref _frameToken);
+                        if (!_receivedKeyFrame)
+                        {
+                            _receivedKeyFrame = true;
+                        }
+                        await Respond(webSocket, new ConsoleInterfaceResponse()
+                        {
+                            Action = "frame",
+                            FrameAction = new FrameAction()
+                            {
+                                Type = "screen"
+                            }
+                        }, cancellationToken);
+                        await webSocket.SendAsync(payload.Buffer, WebSocketMessageType.Binary, true, cancellationToken);
                     }
+                }
+            }
+        }
+
+        private async ValueTask SendSound(WebSocket webSocket, ChannelReader<SoundSubjectPayload> bufferReader, CancellationToken cancellationToken)
+        {
+            while (bufferReader.TryRead(out SoundSubjectPayload payload))
+            {
+                // Share the same traffic control with the video stream.
+                if (_frameToken > 0)
+                {
+                    await Respond(webSocket, new ConsoleInterfaceResponse()
+                    {
+                        Action = "frame",
+                        FrameAction = new FrameAction()
+                        {
+                            Type = "sound"
+                        }
+                    }, cancellationToken);
                     await webSocket.SendAsync(payload.Buffer, WebSocketMessageType.Binary, true, cancellationToken);
                 }
             }
         }
 
-        private async Task SendAllResponses(WebSocket webSocket, CancellationToken cancellationToken)
+        private async ValueTask SendAllResponses(WebSocket webSocket, CancellationToken cancellationToken)
         {
             while (_responseQueue.TryDequeue(out ReadOnlyMemory<byte> response))
             {
@@ -227,6 +273,11 @@ namespace OptimeGBAServer.Controllers
         private void Respond(ConsoleInterfaceResponse response)
         {
             _responseQueue.Enqueue(SerializeResponse(response));
+        }
+
+        private async ValueTask Respond(WebSocket webSocket, ConsoleInterfaceResponse response, CancellationToken cancellationToken)
+        {
+            await webSocket.SendAsync(SerializeResponse(response), WebSocketMessageType.Text, true, cancellationToken);
         }
 
         private ReadOnlyMemory<byte> SerializeResponse(ConsoleInterfaceResponse response)

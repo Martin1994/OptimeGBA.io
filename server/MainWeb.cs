@@ -19,6 +19,9 @@ namespace OptimeGBAServer
             builder.Services.AddSingleton<ScreenSubjectService>();
             builder.Services.AddHostedService<ScreenSubjectService>(s => s.GetRequiredService<ScreenSubjectService>());
 
+            builder.Services.AddSingleton<SoundSubjectService>();
+            builder.Services.AddHostedService<SoundSubjectService>(s => s.GetRequiredService<SoundSubjectService>());
+
             switch (builder.Configuration["VideoEncoding"].ToString()) {
                 case "vp9":
                     builder.Services.AddSingleton<IGbaRenderer, Vp9RendererService>();

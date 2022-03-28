@@ -1,9 +1,10 @@
 import * as React from "react";
-import { GbaKeyAction } from "../models/actions";
-import { Gba } from "./gba";
+import { GbaKey, GbaKeyAction } from "../models/actions";
+
+export type GbaKeyHandler = (key: GbaKey, action: GbaKeyAction, repeat: boolean) => void;
 
 export interface GbaKeyControlProps {
-    readonly gba: Gba;
+    readonly onKeyEvent: GbaKeyHandler;
 }
 
 export class GbaKeyControl extends React.PureComponent<GbaKeyControlProps> {
@@ -54,51 +55,51 @@ export class GbaKeyControl extends React.PureComponent<GbaKeyControlProps> {
      * @returns Prevent default.
      */
     private mapKeyAction(key: string, action: GbaKeyAction, repeat: boolean): boolean {
+        const gbaKey = this.mapGbaKey(key);
+        if (gbaKey) {
+            this.props.onKeyEvent(gbaKey, action, repeat);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * @returns GBA button key.
+     */
+    private mapGbaKey(key: string): GbaKey | undefined {
         switch (key) {
             case "KeyZ":
-                this.props.gba.sendKeyAction("A", action, repeat);
-                break;
+                return "A";
 
             case "KeyX":
-                this.props.gba.sendKeyAction("B", action, repeat);
-                break;
+                return "B";
 
             case "KeyA":
-                this.props.gba.sendKeyAction("L", action, repeat);
-                break;
+                return "L";
 
             case "KeyS":
-                this.props.gba.sendKeyAction("R", action, repeat);
-                break;
+                return "R";
 
             case "Backspace":
-                this.props.gba.sendKeyAction("select", action, repeat);
-                break;
+                return "select";
 
             case "Enter":
-                this.props.gba.sendKeyAction("start", action, repeat);
-                break;
+                return "start";
 
             case "ArrowLeft":
-                this.props.gba.sendKeyAction("left", action, repeat);
-                break;
+                return "left";
 
             case "ArrowRight":
-                this.props.gba.sendKeyAction("right", action, repeat);
-                break;
+                return "right";
 
             case "ArrowUp":
-                this.props.gba.sendKeyAction("up", action, repeat);
-                break;
+                return "up";
 
             case "ArrowDown":
-                this.props.gba.sendKeyAction("down", action, repeat);
-                break;
+                return "down";
 
             default:
-                return false;
+                return undefined;
         }
-
-        return true;
     }
 }

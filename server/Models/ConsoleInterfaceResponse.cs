@@ -6,6 +6,7 @@ namespace OptimeGBAServer.Models
 
         public InitAction? InitAction { get; set; }
 
+        public FrameAction? FrameAction { get; set; }
         public PongAction? PongAction { get; set; }
     }
 }

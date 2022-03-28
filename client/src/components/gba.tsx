@@ -6,12 +6,15 @@ import { GbaKeyControl } from "./gbaKeyControl";
 
 const FPS_REFRESH_INTERVAL_MS: number = 1000;
 
+export type GbaSocketStatus = "shutdown" | "disconnected" | "connecting" | "connected";
+
 export interface GbaStates {
     readonly codec: string;
     readonly rtt: number;
     readonly fps: number;
     readonly worstFrameLatency: number;
-    readonly status: "shutdown" | "disconnected" | "connecting" | "connected";
+    readonly status: GbaSocketStatus;
+    readonly silent: boolean;
 }
 
 export interface GbaProps {
@@ -42,7 +45,8 @@ export class Gba extends React.PureComponent<GbaProps, GbaStates> {
             rtt: 0,
             fps: 0,
             worstFrameLatency: 0,
-            status: "shutdown"
+            status: "shutdown",
+            silent: true
         };
     }
 
@@ -51,9 +55,18 @@ export class Gba extends React.PureComponent<GbaProps, GbaStates> {
      */
     public render(): React.ReactNode {
         return <React.Fragment>
-            <GbaView ref={this.viewRef} {...this.state} />
-            <GbaKeyControl gba={this} />
-            <GbaSocket ref={this.socketRef} gba={this} />
+            <GbaView ref={this.viewRef} {...this.state}
+                onSilent={silent => this.setState({ silent })}
+            />
+            <GbaKeyControl
+                onKeyEvent={(key, action, repeat) => this.sendKeyAction(key, action, repeat)} 
+            />
+            <GbaSocket ref={this.socketRef}
+                onStatus={status => this.setState({ status })}
+                onScreenFrame={frame => this.handleScreenFrame(frame)}
+                onSoundFrame={frame => this.handleSoundFrame(frame)}
+                onMessageEvent={message => this.handleMessage(message)}
+            />
         </React.Fragment>;
     }
 
@@ -73,7 +86,7 @@ export class Gba extends React.PureComponent<GbaProps, GbaStates> {
         }
     }
 
-    public handleFrame(frame: ArrayBuffer): void {
+    private handleScreenFrame(frame: ArrayBuffer): void {
         this.view?.renderScreenFrame(frame);
 
         this.frameCounter++;
@@ -95,7 +108,11 @@ export class Gba extends React.PureComponent<GbaProps, GbaStates> {
         });
     }
 
-    public handleMessage(message: ActionResponse): void {
+    private handleSoundFrame(frame: ArrayBuffer): void {
+        void this.view?.flushSoundFrame(frame);
+    }
+
+    private handleMessage(message: ActionResponse): void {
         switch (message.action) {
             case "pong":
                 this.setState({
@@ -115,7 +132,7 @@ export class Gba extends React.PureComponent<GbaProps, GbaStates> {
         }
     }
 
-    public sendKeyAction(key: GbaKey, action: GbaKeyAction, repeat: boolean): void {
+    private sendKeyAction(key: GbaKey, action: GbaKeyAction, repeat: boolean): void {
         if (repeat) {
             return;
         }
