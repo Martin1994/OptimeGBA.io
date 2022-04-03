@@ -1,12 +1,12 @@
 import * as React from "react";
-import { ActionRequest, ActionResponse, FrameType } from "../models/actions";
+import { ActionRequest, ActionResponse } from "../models/actions";
 import { GbaSocketStatus } from "./gba";
 
 const RETRY_TIMEOUT_MIN_MS: number = 1000;
 const RETRY_TIMEOUT_MAX_MS: number = 60000;
 
 export type GbaSocketStatusEvent = (state: GbaSocketStatus) => void;
-export type GbaFrameEvent = (frame: ArrayBuffer) => void;
+export type GbaFrameEvent = (frame: ArrayBufferView) => void;
 export type GbaResponseEvent = (message: ActionResponse) => void;
 
 export interface GbaSocketProps {
@@ -21,7 +21,8 @@ export class GbaSocket extends React.PureComponent<GbaSocketProps> {
 
     private unloadHandler?: (e: BeforeUnloadEvent) => void = undefined;
     private ws?: WebSocket = undefined;
-    private nextFrameType: FrameType = "screen";
+
+    private readonly FRAME_HEADER_SIZE = 4;
 
     /**
      * @overrides
@@ -95,20 +96,17 @@ export class GbaSocket extends React.PureComponent<GbaSocketProps> {
 
     private handleMessage(e: MessageEvent<ArrayBuffer | string>): void {
         if (e.data instanceof ArrayBuffer) {
-            if (this.nextFrameType === "screen") {
-                this.props.onScreenFrame(e.data);
+            const header = new Uint8Array(e.data, 0, this.FRAME_HEADER_SIZE);
+            const data = new Uint8Array(e.data, this.FRAME_HEADER_SIZE);
+            if (header[0] === 0) {
+                this.props.onScreenFrame(data);
             } else {
-                this.props.onSoundFrame(e.data);
+                this.props.onSoundFrame(data);
             }
             return;
         }
 
         const message: ActionResponse = JSON.parse(e.data) as ActionResponse;
-
-        if (message.action === "frame") {
-            this.nextFrameType = message.frameAction.type;
-            return;
-        }
 
         this.props.onMessageEvent(message);
     }

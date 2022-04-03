@@ -9,5 +9,7 @@ namespace OptimeGBAServer.Models
         public FillTokenAction? FillTokenAction { get; set; }
 
         public PingAction? PingAction { get; set; }
+
+        public SoundControlAction? SoundControlAction { get; set; }
     }
 }

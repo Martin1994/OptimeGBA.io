@@ -1,10 +1,10 @@
 import * as React from "react";
 import { GbaStates } from "./gba";
 
-export type GbaSilentEvent = (silent: boolean) => void;
+export type GbaMuteEvent = (mute: boolean) => void;
 
 export interface GbaViewProps extends GbaStates {
-    onSilent: GbaSilentEvent;
+    onMute: GbaMuteEvent;
 }
 
 export class GbaView extends React.PureComponent<GbaViewProps> {
@@ -35,14 +35,8 @@ export class GbaView extends React.PureComponent<GbaViewProps> {
             this.resetDecoder();
         }
 
-        if (this.props.silent) {
-            //this.audio?.suspend();
-        } else {
-            if (this.audio) {
-                //this.audio.resume();
-            } else {
-                void this.mountAudio();
-            }
+        if (!this.props.mute && !this.audio) {
+            void this.mountAudio();
         }
 
         return <div id="console-container">
@@ -54,7 +48,7 @@ export class GbaView extends React.PureComponent<GbaViewProps> {
             <div className="console-status">
                 <span>{`RTT: ${this.renderedRtt.padStart(6, "\u00A0")} | FPS: ${this.renderedFps.padStart(2, "\u00A0")} | Worst Frame Gap: ${this.renderedWorstFrameLatency.padStart(14, "\u00A0")}`}</span>
             </div>
-            <button className="console-silent-button" onClick={() => setTimeout(() => this.props.onSilent(!this.props.silent))}>{this.props.silent ? "\u{1F507}" : "\u{1F508}"}</button>
+            <button className="console-silent-button" onClick={() => setTimeout(() => this.props.onMute(!this.props.mute))}>{this.props.mute ? "\u{1F507}" : "\u{1F508}"}</button>
         </div>;
     }
 
@@ -75,7 +69,7 @@ export class GbaView extends React.PureComponent<GbaViewProps> {
         this.audio.createMediaStreamSource(audioStream).connect(this.audio.destination);
     }
 
-    public renderScreenFrame(frame: ArrayBuffer): void {
+    public renderScreenFrame(frame: ArrayBufferView): void {
         try {
             this.decoder?.decode(new EncodedVideoChunk({
                 data: frame,
@@ -99,10 +93,10 @@ export class GbaView extends React.PureComponent<GbaViewProps> {
         }
     }
 
-    public async flushSoundFrame(frame: ArrayBuffer): Promise<void> {
+    public async flushSoundFrame(frame: ArrayBufferView): Promise<void> {
         const sampleRate = 32768;
         const channels = 2;
-        const buffer = new Int16Array(frame);
+        const buffer = new Int16Array(frame.buffer, frame.byteOffset, frame.byteLength >> 1);
 
         if (!this.audioGenerator) {
             return;
@@ -115,7 +109,7 @@ export class GbaView extends React.PureComponent<GbaViewProps> {
             numberOfFrames: buffer.length / channels,
             sampleRate,
             timestamp: this.audioTimestamp,
-            data: frame
+            data: buffer
         }));
         writer.releaseLock();
 

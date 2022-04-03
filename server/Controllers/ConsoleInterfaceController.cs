@@ -38,6 +38,8 @@ namespace OptimeGBAServer.Controllers
 
         private bool _receivedKeyFrame = false;
 
+        private bool _mute = true;
+
         private readonly ConcurrentQueue<ReadOnlyMemory<byte>> _responseQueue = new ConcurrentQueue<ReadOnlyMemory<byte>>();
 
         public ConsoleInterfaceController(
@@ -84,6 +86,10 @@ namespace OptimeGBAServer.Controllers
                             MadeAt = request.PingAction?.MadeAt ?? 0
                         }
                     });
+                    break;
+
+                case "soundControl":
+                    this._mute = request.SoundControlAction?.Mute ?? true;
                     break;
 
                 default:
@@ -228,14 +234,6 @@ namespace OptimeGBAServer.Controllers
                         {
                             _receivedKeyFrame = true;
                         }
-                        await Respond(webSocket, new ConsoleInterfaceResponse()
-                        {
-                            Action = "frame",
-                            FrameAction = new FrameAction()
-                            {
-                                Type = "screen"
-                            }
-                        }, cancellationToken);
                         await webSocket.SendAsync(payload.Buffer, WebSocketMessageType.Binary, true, cancellationToken);
                     }
                 }
@@ -247,16 +245,8 @@ namespace OptimeGBAServer.Controllers
             while (bufferReader.TryRead(out SoundSubjectPayload payload))
             {
                 // Share the same traffic control with the video stream.
-                if (_frameToken > 0)
+                if (!_mute && _frameToken > 0)
                 {
-                    await Respond(webSocket, new ConsoleInterfaceResponse()
-                    {
-                        Action = "frame",
-                        FrameAction = new FrameAction()
-                        {
-                            Type = "sound"
-                        }
-                    }, cancellationToken);
                     await webSocket.SendAsync(payload.Buffer, WebSocketMessageType.Binary, true, cancellationToken);
                 }
             }
@@ -273,11 +263,6 @@ namespace OptimeGBAServer.Controllers
         private void Respond(ConsoleInterfaceResponse response)
         {
             _responseQueue.Enqueue(SerializeResponse(response));
-        }
-
-        private async ValueTask Respond(WebSocket webSocket, ConsoleInterfaceResponse response, CancellationToken cancellationToken)
-        {
-            await webSocket.SendAsync(SerializeResponse(response), WebSocketMessageType.Text, true, cancellationToken);
         }
 
         private ReadOnlyMemory<byte> SerializeResponse(ConsoleInterfaceResponse response)

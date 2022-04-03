@@ -24,6 +24,10 @@ namespace OptimeGBAServer.Services
         public const int CYCLES_PER_SECONDS = 0x1000000;
         private const double SECONDS_PER_FRAME = (double)CYCLES_PER_FRAME / (double)CYCLES_PER_SECONDS;
 
+        public const int FRAME_HEADER_LENGTH = 4;
+        public static readonly byte[] SCREEN_FRAME_HEADER = new byte[FRAME_HEADER_LENGTH] { 0, 0, 0, 0 };
+        public static readonly byte[] SOUND_FRAME_HEADER = new byte[FRAME_HEADER_LENGTH] { 1, 0, 0, 0 };
+
         private readonly ILogger _logger;
 
         private string _gbaBiosHome;
@@ -123,10 +127,11 @@ namespace OptimeGBAServer.Services
             if (_soundBufferOffset + source.Length >= _soundBuffer.Length) {
                 _soundBufferOffset = 0;
             }
-            Memory<byte> buffer = new Memory<byte>(_soundBuffer, _soundBufferOffset, source.Length);
+            Memory<byte> buffer = new Memory<byte>(_soundBuffer, _soundBufferOffset, source.Length + FRAME_HEADER_LENGTH);
             _soundBufferOffset += stereo16BitInterleavedData.Length;
 
-            source.CopyTo(buffer.Span);
+            SOUND_FRAME_HEADER.CopyTo(buffer.Span);
+            source.CopyTo(buffer.Span.Slice(FRAME_HEADER_LENGTH));
 
             _soundSubjectService.BufferWriter.TryWrite(new SoundSubjectPayload()
             {

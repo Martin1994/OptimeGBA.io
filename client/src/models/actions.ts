@@ -1,5 +1,5 @@
-export type ActionRequest = KeyActionRequest | FillTokenActionRequest | PingActionRequest;
-export type ActionResponse = InitActionResponse | FrameActionResponse | PongActionResponse;
+export type ActionRequest = KeyActionRequest | FillTokenActionRequest | PingActionRequest | SoundControlActionRequest;
+export type ActionResponse = InitActionResponse | PongActionResponse;
 
 export type GbaKey = "A" | "B" | "L" | "R" | "select" | "start" | "left" | "right" | "up" | "down";
 export type GbaKeyAction = "up" | "down";
@@ -26,19 +26,17 @@ export interface PingActionRequest {
     }
 }
 
+export interface SoundControlActionRequest {
+    action: "soundControl";
+    soundControlAction: {
+        mute: boolean;
+    }
+}
+
 export interface InitActionResponse {
     action: "init";
     initAction: {
         codec: string;
-    };
-}
-
-export type FrameType = "screen" | "sound";
-
-export interface FrameActionResponse {
-    action: "frame";
-    frameAction: {
-        type: FrameType;
     };
 }
 

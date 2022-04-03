@@ -120,10 +120,12 @@ namespace OptimeGBAServer.Services
                         int bufferOffset = bufferPoolIndex * bufferSize;
                         bufferPoolIndex = (bufferOffset + 1) % bufferPoolSize;
                         var frame = packet.DataAsFrame;
-                        frame.Buf.CopyTo(new Span<byte>(frameBuffer, bufferOffset, bufferSize));
+                        Memory<byte> buffer = new Memory<byte>(frameBuffer, bufferOffset, bufferSize);
+                        GbaHostService.SCREEN_FRAME_HEADER.CopyTo(buffer.Span);
+                        frame.Buf.CopyTo(buffer.Span.Slice(GbaHostService.FRAME_HEADER_LENGTH));
                         FlushFrame(new ScreenSubjectPayload()
                         {
-                            Buffer = new ReadOnlyMemory<byte>(frameBuffer, bufferOffset, frame.Buf.Length),
+                            Buffer = buffer.Slice(0, frame.Buf.Length + GbaHostService.FRAME_HEADER_LENGTH),
                             FrameMetadata = new FrameMetadata()
                             {
                                 IsKey = true//(frame.Flags & VPX_FRAME_IS_KEY) == VPX_FRAME_IS_KEY

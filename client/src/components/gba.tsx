@@ -14,7 +14,7 @@ export interface GbaStates {
     readonly fps: number;
     readonly worstFrameLatency: number;
     readonly status: GbaSocketStatus;
-    readonly silent: boolean;
+    readonly mute: boolean;
 }
 
 export interface GbaProps {
@@ -46,7 +46,7 @@ export class Gba extends React.PureComponent<GbaProps, GbaStates> {
             fps: 0,
             worstFrameLatency: 0,
             status: "shutdown",
-            silent: true
+            mute: true
         };
     }
 
@@ -56,10 +56,10 @@ export class Gba extends React.PureComponent<GbaProps, GbaStates> {
     public render(): React.ReactNode {
         return <React.Fragment>
             <GbaView ref={this.viewRef} {...this.state}
-                onSilent={silent => this.setState({ silent })}
+                onMute={mute => this.handleMuteEvent(mute)}
             />
             <GbaKeyControl
-                onKeyEvent={(key, action, repeat) => this.sendKeyAction(key, action, repeat)} 
+                onKeyEvent={(key, action, repeat) => this.sendKeyAction(key, action, repeat)}
             />
             <GbaSocket ref={this.socketRef}
                 onStatus={status => this.setState({ status })}
@@ -86,7 +86,7 @@ export class Gba extends React.PureComponent<GbaProps, GbaStates> {
         }
     }
 
-    private handleScreenFrame(frame: ArrayBuffer): void {
+    private handleScreenFrame(frame: ArrayBufferView): void {
         this.view?.renderScreenFrame(frame);
 
         this.frameCounter++;
@@ -108,7 +108,7 @@ export class Gba extends React.PureComponent<GbaProps, GbaStates> {
         });
     }
 
-    private handleSoundFrame(frame: ArrayBuffer): void {
+    private handleSoundFrame(frame: ArrayBufferView): void {
         void this.view?.flushSoundFrame(frame);
     }
 
@@ -142,6 +142,17 @@ export class Gba extends React.PureComponent<GbaProps, GbaStates> {
         };
         this.socket?.sendAction(request);
         this.ping();
+    }
+
+    private handleMuteEvent(mute: boolean): void {
+        this.setState({ mute });
+
+        this.socket?.sendAction({
+            action: "soundControl",
+            soundControlAction: {
+                mute
+            }
+        });
     }
 
     public ping(): void {
