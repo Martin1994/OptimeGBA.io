@@ -50,13 +50,13 @@ namespace OptimeGBAServer.Services
         {
             OptimeConfig optimeConfig = configuration.GetSection("Optime").Get<OptimeConfig>();
 
-            if (optimeConfig.BiosHome is null)
+            if (optimeConfig.BiosHome == null)
             {
                 throw new InitializationException("GBA BIOS home is not provided.");
             }
             _gbaBiosHome = optimeConfig.BiosHome;
 
-            if (optimeConfig.Rom is null)
+            if (optimeConfig.Rom == null)
             {
                 throw new InitializationException("ROM file is not provided.");
             }

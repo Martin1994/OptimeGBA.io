@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Net;
 using System.Net.WebSockets;
 using System.Text.Json;
@@ -12,7 +13,7 @@ using OptimeGBAServer.IO;
 
 namespace OptimeGBAServer.Controllers
 {
-    public abstract class JsonWebSocketController<TRequest> : ControllerBase where TRequest : class
+    public abstract class JsonWebSocketController : ControllerBase
     {
         protected readonly ILogger _logger;
         protected readonly JsonSerializerOptions? _serializerOptions;
@@ -46,22 +47,20 @@ namespace OptimeGBAServer.Controllers
         {
             try
             {
+                WebSocketReadStream messageStream = new WebSocketReadStream(webSocket);
+                byte[] actionBuffer = new byte[1];
                 while (!cancellationToken.IsCancellationRequested)
                 {
-                    try
+                    messageStream.Reset();
+                    var actionFrame = await webSocket.ReceiveAsync(actionBuffer, cancellationToken);
+                    char action = (char)actionBuffer[0];
+                    if (actionFrame.EndOfMessage)
                     {
-                        WebSocketReadStream messageStream = new WebSocketReadStream(webSocket);
-                        TRequest? request = await JsonSerializer.DeserializeAsync<TRequest>(messageStream, _serializerOptions, cancellationToken);
-                        if (request is null)
-                        {
-                            _logger.LogDebug("Received null. Skipped.");
-                            continue;
-                        }
-                        await HandleRequest(request, cancellationToken);
+                        await HandleRequest(null, action, cancellationToken);
                     }
-                    catch (JsonException)
+                    else
                     {
-                        _logger.LogDebug("Received invalid JSON. Skipped.");
+                        await HandleRequest(messageStream, action, cancellationToken);
                     }
                 }
             }
@@ -80,7 +79,7 @@ namespace OptimeGBAServer.Controllers
             }
         }
 
-        protected abstract Task HandleRequest(TRequest request, CancellationToken cancellationToken);
+        protected abstract ValueTask HandleRequest(Stream? utf8JsonStream, char action, CancellationToken cancellationToken);
 
         protected abstract Task SendWorker(WebSocket webSocket, CancellationToken cancellationToken);
     }

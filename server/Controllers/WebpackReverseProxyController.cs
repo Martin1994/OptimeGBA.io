@@ -22,7 +22,7 @@ namespace OptimeGBAServer.Controllers
         [HttpGet]
         public async Task<IActionResult> Get(string? requestedPath, CancellationToken cancellationToken)
         {
-            if (requestedPath is null)
+            if (requestedPath == null)
             {
                 return new StatusCodeResult(404);
             }

@@ -1,11 +1,19 @@
 namespace OptimeGBAServer.Models
 {
-    public class ConsoleInterfaceResponse
+    public interface ConsoleInterfaceResponse
     {
-        public string? Action { get; set; }
+        public string Action { get; }
+    }
 
-        public InitAction? InitAction { get; set; }
+    public struct InitResponse : ConsoleInterfaceResponse
+    {
+        public string Action { get => "init"; }
+        public string? Codec { get; init; }
+    }
 
-        public PongAction? PongAction { get; set; }
+    public struct PongResponse : ConsoleInterfaceResponse
+    {
+        public string Action { get => "pong"; }
+        public double MadeAt { get; init; }
     }
 }

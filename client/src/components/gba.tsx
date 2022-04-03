@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ActionResponse, GbaKey, GbaKeyAction, KeyActionRequest } from "../models/actions";
+import { ActionResponse, GbaKey, GbaKeyAction } from "../models/actions";
 import { GbaView } from "./gbaView";
 import { GbaSocket } from "./gbaSocket";
 import { GbaKeyControl } from "./gbaKeyControl";
@@ -100,12 +100,7 @@ export class Gba extends React.PureComponent<GbaProps, GbaStates> {
         }
         this.lastFrameArrived = frameArrived;
 
-        this.socket?.sendAction({
-            action: "fillToken",
-            fillTokenAction: {
-                count: 1
-            }
-        });
+        this.socket?.sendAction("t");
     }
 
     private handleAudioFrame(frame: ArrayBufferView): void {
@@ -116,13 +111,13 @@ export class Gba extends React.PureComponent<GbaProps, GbaStates> {
         switch (message.action) {
             case "pong":
                 this.setState({
-                    rtt: performance.now() - message.pongAction.madeAt
+                    rtt: performance.now() - message.madeAt
                 });
                 break;
 
             case "init":
                 this.setState({
-                    codec: message.initAction.codec
+                    codec: message.codec
                 });
                 break;
 
@@ -136,32 +131,18 @@ export class Gba extends React.PureComponent<GbaProps, GbaStates> {
         if (repeat) {
             return;
         }
-        const request: KeyActionRequest = {
-            action: "key",
-            keyAction: { key, action }
-        };
-        this.socket?.sendAction(request);
+        this.socket?.sendAction("k", { key, action });
         this.ping();
     }
 
     private handleMuteEvent(mute: boolean): void {
         this.setState({ mute });
 
-        this.socket?.sendAction({
-            action: "audioControl",
-            audioControlAction: {
-                mute
-            }
-        });
+        this.socket?.sendAction("a", { mute });
     }
 
     public ping(): void {
-        this.socket?.sendAction({
-            action: "ping",
-            pingAction: {
-                madeAt: performance.now()
-            }
-        });
+        this.socket?.sendAction("p", { madeAt: performance.now() });
     }
 
     private refreshStatus(): void {

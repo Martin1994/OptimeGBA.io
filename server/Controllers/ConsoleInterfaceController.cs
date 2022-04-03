@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.IO;
 using System.Net.WebSockets;
 using System.Text.Json;
 using System.Threading;
@@ -14,7 +15,7 @@ using OptimeGBAServer.Services;
 namespace OptimeGBAServer.Controllers
 {
     [Route("/consoleInterface.sock")]
-    public class ConsoleInterfaceController : JsonWebSocketController<ConsoleInterfaceRequest>
+    public class ConsoleInterfaceController : JsonWebSocketController
     {
         private const string KEY_ACTION_UP = "up";
         private const string KEY_ACTION_DOWN = "down";
@@ -54,62 +55,86 @@ namespace OptimeGBAServer.Controllers
             _renderer = renderer;
         }
 
-        protected override async Task HandleRequest(ConsoleInterfaceRequest request, CancellationToken cancellationToken)
+        protected override async ValueTask HandleRequest(Stream? utf8JsonStream, char action, CancellationToken cancellationToken)
         {
-            _logger.LogDebug("Handle action: {0}", request.Action);
-            switch (request.Action)
+            _logger.LogDebug("Handle action: {0}", action);
+            try
             {
-                case "key":
-                    if (request.KeyAction is null)
-                    {
-                        _logger.LogWarning("Expected non-null {0} but got null. Discarded.", nameof(request.KeyAction));
-                        break;
-                    }
-                    HandleKeyAction(request.KeyAction);
-                    break;
-
-                case "fillToken":
-                    if (request.FillTokenAction is null)
-                    {
-                        _logger.LogWarning("Expected non-null {0} but got null. Discarded.", nameof(request.FillTokenAction));
-                        break;
-                    }
-                    HandleFillTokenAction(request.FillTokenAction);
-                    break;
-
-                case "ping":
-                    Respond(new ConsoleInterfaceResponse()
-                    {
-                        Action = "pong",
-                        PongAction = new PongAction()
+                switch (action)
+                {
+                    case 'k': // key
+                        if (utf8JsonStream == null)
                         {
-                            MadeAt = request.PingAction?.MadeAt ?? 0
+                            _logger.LogWarning("Expected JSON body but got nothing. Discarded.");
+                            break;
                         }
-                    });
-                    break;
+                        HandleKeyRequest(await JsonSerializer.DeserializeAsync<KeyRequest>(utf8JsonStream, _serializerOptions, cancellationToken));
+                        break;
 
-                case "audioControl":
-                    this._mute = request.AudioControlAction?.Mute ?? true;
-                    break;
+                    case 't': // fill token
+                        if (utf8JsonStream != null)
+                        {
+                            _logger.LogWarning("Expected no JSON body but got something. Discarded.");
+                            await JsonSerializer.DeserializeAsync<DummyRequest>(utf8JsonStream, _serializerOptions, cancellationToken);
+                            break;
+                        }
+                        Interlocked.Add(ref this._frameToken, 1);
+                        break;
 
-                default:
-                    _logger.LogWarning("Unknown action: {0}. Discarded.", request.Action);
-                    break;
+                    case 'p': // ping
+                        if (utf8JsonStream == null)
+                        {
+                            _logger.LogWarning("Expected JSON body but got nothing. Discarded.");
+                            break;
+                        }
+                        HandlePingRequest(await JsonSerializer.DeserializeAsync<PingRequest>(utf8JsonStream, _serializerOptions, cancellationToken));
+                        break;
+
+                    case 'a': // audio control
+                        if (utf8JsonStream == null)
+                        {
+                            _logger.LogWarning("Expected JSON body but got nothing. Discarded.");
+                            break;
+                        }
+                        HandleAudioControlRequest(await JsonSerializer.DeserializeAsync<AudioControlRequest>(utf8JsonStream, _serializerOptions, cancellationToken));
+                        break;
+
+                    default:
+                        _logger.LogWarning("Unknown action: {0}. Discarded.", action);
+                        break;
+                }
+            }
+            catch (JsonException)
+            {
+                _logger.LogDebug("Received invalid JSON. Skipped.");
             }
             await Task.CompletedTask;
         }
 
-        private void HandleKeyAction(KeyAction keyAction)
+        private void HandlePingRequest(PingRequest request)
+        {
+            Respond(new PongResponse()
+            {
+                MadeAt = request.MadeAt
+            });
+        }
+
+        private void HandleAudioControlRequest(AudioControlRequest request)
+        {
+            this._mute = request.Mute;
+        }
+
+        private void HandleKeyRequest(KeyRequest request)
         {
             Gba? gba = this._gba.Emulator;
-            if (gba is null)
+            if (gba == null)
             {
                 _logger.LogWarning("Emulator is not ready yet. Can't send key event now.");
                 return;
             }
 
             bool pressed;
-            switch (keyAction.Action)
+            switch (request.Action)
             {
                 case KEY_ACTION_UP:
                     pressed = false;
@@ -120,11 +145,11 @@ namespace OptimeGBAServer.Controllers
                     break;
 
                 default:
-                    _logger.LogWarning("{0} must be either \"up\" or \"down\". Discarded.", nameof(keyAction.Action));
+                    _logger.LogWarning("{0} must be either \"up\" or \"down\". Discarded.", nameof(request.Action));
                     return;
             }
 
-            switch (keyAction.Key)
+            switch (request.Key)
             {
                 case KEY_A:
                     gba.Keypad.A = pressed;
@@ -167,25 +192,16 @@ namespace OptimeGBAServer.Controllers
                     break;
 
                 default:
-                    _logger.LogWarning("Unknown key {0}. Discarded.", keyAction.Key);
+                    _logger.LogWarning("Unknown key {0}. Discarded.", request.Key);
                     return;
             }
         }
 
-        private void HandleFillTokenAction(FillTokenAction fillTokenAction)
-        {
-            Interlocked.Add(ref this._frameToken, fillTokenAction.Count);
-        }
-
         protected override async Task SendWorker(WebSocket webSocket, CancellationToken cancellationToken)
         {
-            Respond(new ConsoleInterfaceResponse()
+            Respond(new InitResponse()
             {
-                Action = "init",
-                InitAction = new InitAction()
-                {
-                    Codec = _renderer.CodecString
-                }
+                Codec = _renderer.CodecString
             });
 
             var videoBufferChannel = Channel.CreateBounded<VideoSubjectPayload>(
@@ -260,14 +276,9 @@ namespace OptimeGBAServer.Controllers
             }
         }
 
-        private void Respond(ConsoleInterfaceResponse response)
+        private void Respond<T>(T response) where T : ConsoleInterfaceResponse
         {
-            _responseQueue.Enqueue(SerializeResponse(response));
-        }
-
-        private ReadOnlyMemory<byte> SerializeResponse(ConsoleInterfaceResponse response)
-        {
-            return JsonSerializer.SerializeToUtf8Bytes(response, _serializerOptions);
+            _responseQueue.Enqueue(JsonSerializer.SerializeToUtf8Bytes(response, _serializerOptions));
         }
     }
 }

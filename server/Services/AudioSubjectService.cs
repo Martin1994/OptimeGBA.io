@@ -8,6 +8,7 @@ namespace OptimeGBAServer.Services
     {
         public ReadOnlyMemory<byte> Buffer { get; set; }
     }
+
     public class AudioSubjectService : SubjectService<AudioSubjectPayload>
     {
         public AudioSubjectService(IHostApplicationLifetime lifetime, ILogger<VideoSubjectService> logger) : base(lifetime, logger) { }

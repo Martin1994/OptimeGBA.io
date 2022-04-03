@@ -68,6 +68,12 @@ namespace OptimeGBAServer.IO
 
         public override void SetLength(long value) => throw new InvalidOperationException();
 
+        public void Reset()
+        {
+            _aboutToClose = false;
+            _closed = false;
+        }
+
         public override void Write(byte[] buffer, int offset, int count) => throw new InvalidOperationException();
     }
 }

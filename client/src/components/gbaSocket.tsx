@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ActionRequest, ActionResponse } from "../models/actions";
+import { ActionRequestArgs, ActionResponse } from "../models/actions";
 import { GbaSocketStatus } from "./gba";
 
 const RETRY_TIMEOUT_MIN_MS: number = 1000;
@@ -85,13 +85,18 @@ export class GbaSocket extends React.PureComponent<GbaSocketProps> {
         return ws;
     }
 
-    public sendAction(request: ActionRequest): void {
+    public sendAction(...args: ActionRequestArgs): void;
+    public sendAction(action: string, body?: unknown): void {
         if (!this.ws) {
             console.warn("No connection. Action will be discarded.");
             return;
         }
 
-        this.ws.send(JSON.stringify(request));
+        if (body) {
+            this.ws.send(action + JSON.stringify(body));
+        } else {
+            this.ws.send(action);
+        }
     }
 
     private handleMessage(e: MessageEvent<ArrayBuffer | string>): void {

@@ -1,48 +1,32 @@
-export type ActionRequest = KeyActionRequest | FillTokenActionRequest | PingActionRequest | AudioControlActionRequest;
-export type ActionResponse = InitActionResponse | PongActionResponse;
+export type ActionRequestArgs =
+    ["k", KeyRequest] |
+    ["t"] |
+    ["p", PingRequest] |
+    ["a", AudioControlRequest];
+export type ActionResponse = InitResponse | PongResponse;
 
 export type GbaKey = "A" | "B" | "L" | "R" | "select" | "start" | "left" | "right" | "up" | "down";
 export type GbaKeyAction = "up" | "down";
 
-export interface KeyActionRequest {
-    action: "key";
-    keyAction: {
-        key: GbaKey;
-        action: GbaKeyAction;
-    }
+export interface KeyRequest {
+    key: GbaKey;
+    action: GbaKeyAction;
 }
 
-export interface FillTokenActionRequest {
-    action: "fillToken";
-    fillTokenAction: {
-        count: number;
-    }
+export interface PingRequest {
+    madeAt: number;
 }
 
-export interface PingActionRequest {
-    action: "ping";
-    pingAction: {
-        madeAt: number;
-    }
+export interface AudioControlRequest {
+    mute: boolean;
 }
 
-export interface AudioControlActionRequest {
-    action: "audioControl";
-    audioControlAction: {
-        mute: boolean;
-    }
-}
-
-export interface InitActionResponse {
+export interface InitResponse {
     action: "init";
-    initAction: {
-        codec: string;
-    };
+    codec: string;
 }
 
-export interface PongActionResponse {
+export interface PongResponse {
     action: "pong";
-    pongAction: {
-        madeAt: number;
-    };
+    madeAt: number;
 }

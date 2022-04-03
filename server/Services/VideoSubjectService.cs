@@ -10,6 +10,7 @@ namespace OptimeGBAServer.Services
         public ReadOnlyMemory<byte> Buffer { get; set; }
         public FrameMetadata FrameMetadata { get; set; }
     }
+
     public class VideoSubjectService : SubjectService<VideoSubjectPayload>
     {
         public VideoSubjectService(IHostApplicationLifetime lifetime, ILogger<VideoSubjectService> logger) : base(lifetime, logger) { }

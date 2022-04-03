@@ -1,15 +1,22 @@
 namespace OptimeGBAServer.Models
 {
-    public class ConsoleInterfaceRequest
+    public struct AudioControlRequest
     {
+        public bool Mute { get; set; }
+    }
+
+    public struct DummyRequest
+    {
+    }
+
+    public struct KeyRequest
+    {
+        public string? Key { get; set; }
         public string? Action { get; set; }
+    }
 
-        public KeyAction? KeyAction { get; set; }
-
-        public FillTokenAction? FillTokenAction { get; set; }
-
-        public PingAction? PingAction { get; set; }
-
-        public AudioControlAction? AudioControlAction { get; set; }
+    public struct PingRequest
+    {
+        public double MadeAt { get; set; }
     }
 }

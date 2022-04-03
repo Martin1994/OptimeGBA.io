@@ -1,6 +1,6 @@
 namespace OptimeGBAServer.Models
 {
-    public class FrameMetadata
+    public struct FrameMetadata
     {
         public bool IsKey { get; set; }
     }
