@@ -5,9 +5,11 @@ This is a web server frontend of [OptimeGBA](https://github.com/Powerlated/Optim
 ## How it works
 OptimeGBA.io hosts an ASP.NET web server with a GBA simulator ([OptimeGBA](https://github.com/Powerlated/OptimeGBA)) running on it. Clients communicates with the simulator with WebSocket.
 
-Screen frames are transmitted in image format frame by frame. Clients render a frame as soon as it arrives. There is a simple traffic control mechanism which limits the unacknowledged screen frames per client to be at most 10.
+Video frames are transmitted in encoded video frames. There is a simple traffic control mechanism which caps 10 unacknowledged video frames per client. Each video
+frames are flushed from emulator, encoded on server side, sent to each client, and rendered on client side as soon as possible. In other words, on client side video
+frames are not rendered in a fixed rate like a normal video streaming, but dynamically based on when a frame arrives.
 
-Audio is not supported at this moment.
+Audio frames are transmitted in raw 16 bit integer format with 2 channels. Audio buffers are transmitted every 256 samples (The sample rate of GBA is 32768 Hz).
 
 ## Development
 

@@ -14,14 +14,14 @@ namespace OptimeGBAServer.Controllers
         private readonly ILogger _logger;
         private readonly GbaHostService _gba;
         private readonly IGbaRenderer _renderer;
-        private readonly ScreenSubjectService _screen;
+        private readonly VideoSubjectService _video;
 
-        public StatusController(ILogger<StatusController> logger, GbaHostService gba, IGbaRenderer renderer, ScreenSubjectService screen)
+        public StatusController(ILogger<StatusController> logger, GbaHostService gba, IGbaRenderer renderer, VideoSubjectService video)
         {
             _logger = logger;
             _gba = gba;
             _renderer = renderer;
-            _screen = screen;
+            _video = video;
         }
 
         [HttpGet]
@@ -32,7 +32,7 @@ namespace OptimeGBAServer.Controllers
                 Fps = _gba.Fps,
                 Bps = _renderer.Bpf * _gba.Fps,
                 UpTime = (DateTime.Now - Process.GetCurrentProcess().StartTime).TotalSeconds,
-                Connections = _screen.ObserverCount
+                Connections = _video.ObserverCount
             };
         }
     }

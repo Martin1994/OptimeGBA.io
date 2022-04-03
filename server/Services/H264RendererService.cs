@@ -29,8 +29,8 @@ namespace OptimeGBAServer.Services
 
         public H264RendererService(
             IHostApplicationLifetime lifetime, ILogger<H264RendererService> logger,
-            ScreenSubjectService screenSubjectService, ScreenshotHelper screenshot
-        ) : base(lifetime, logger, screenSubjectService)
+            VideoSubjectService videoSubjectService, ScreenshotHelper screenshot
+        ) : base(lifetime, logger, videoSubjectService)
         {
             _logger = logger;
             _screenshot = screenshot;
@@ -146,9 +146,9 @@ namespace OptimeGBAServer.Services
                     int bufferOffsetStart = bufferOffset;
                     bufferPoolIndex = (bufferOffset + 1) % bufferPoolSize;
                     Memory<byte> buffer = new Memory<byte>(frameBuffer, bufferOffset, bufferSize);
-                    GbaHostService.SCREEN_FRAME_HEADER.CopyTo(buffer.Span);
+                    GbaHostService.VIDEO_FRAME_HEADER.CopyTo(buffer.Span);
                     frame.CopyFrameData(buffer.Span.Slice(GbaHostService.FRAME_HEADER_LENGTH));
-                    FlushFrame(new ScreenSubjectPayload()
+                    FlushFrame(new VideoSubjectPayload()
                     {
                         Buffer = buffer.Slice(0, frame.FrameSizeInBytes + GbaHostService.FRAME_HEADER_LENGTH),
                         FrameMetadata = new FrameMetadata()

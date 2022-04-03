@@ -11,8 +11,8 @@ export type GbaResponseEvent = (message: ActionResponse) => void;
 
 export interface GbaSocketProps {
     readonly onStatus: GbaSocketStatusEvent;
-    readonly onScreenFrame: GbaFrameEvent;
-    readonly onSoundFrame: GbaFrameEvent;
+    readonly onVideoFrame: GbaFrameEvent;
+    readonly onAudioFrame: GbaFrameEvent;
     readonly onMessageEvent: GbaResponseEvent;
 }
 
@@ -99,9 +99,9 @@ export class GbaSocket extends React.PureComponent<GbaSocketProps> {
             const header = new Uint8Array(e.data, 0, this.FRAME_HEADER_SIZE);
             const data = new Uint8Array(e.data, this.FRAME_HEADER_SIZE);
             if (header[0] === 0) {
-                this.props.onScreenFrame(data);
+                this.props.onVideoFrame(data);
             } else {
-                this.props.onSoundFrame(data);
+                this.props.onAudioFrame(data);
             }
             return;
         }

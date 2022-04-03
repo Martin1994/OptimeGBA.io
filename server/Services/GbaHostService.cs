@@ -25,8 +25,8 @@ namespace OptimeGBAServer.Services
         private const double SECONDS_PER_FRAME = (double)CYCLES_PER_FRAME / (double)CYCLES_PER_SECONDS;
 
         public const int FRAME_HEADER_LENGTH = 4;
-        public static readonly byte[] SCREEN_FRAME_HEADER = new byte[FRAME_HEADER_LENGTH] { 0, 0, 0, 0 };
-        public static readonly byte[] SOUND_FRAME_HEADER = new byte[FRAME_HEADER_LENGTH] { 1, 0, 0, 0 };
+        public static readonly byte[] VIDEO_FRAME_HEADER = new byte[FRAME_HEADER_LENGTH] { 0, 0, 0, 0 };
+        public static readonly byte[] AUDIO_FRAME_HEADER = new byte[FRAME_HEADER_LENGTH] { 1, 0, 0, 0 };
 
         private readonly ILogger _logger;
 
@@ -38,14 +38,14 @@ namespace OptimeGBAServer.Services
 
         public Gba? Emulator { get; private set; }
 
-        private readonly ScreenSubjectService _screenSubjectService;
-        private readonly SoundSubjectService _soundSubjectService;
+        private readonly VideoSubjectService _videoSubjectService;
+        private readonly AudioSubjectService _audioSubjectService;
         private readonly IGbaRenderer _renderer;
 
         public GbaHostService(
             IHostApplicationLifetime lifetime, IConfiguration configuration, ILogger<GbaHostService> logger,
-            IGbaRenderer renderer, ScreenSubjectService screenSubjectService, ScreenshotHelper screenshot,
-            SoundSubjectService soundSubjectService
+            IGbaRenderer renderer, VideoSubjectService videoSubjectService, ScreenshotHelper screenshot,
+            AudioSubjectService audioSubjectService
         ) : base(lifetime, logger)
         {
             OptimeConfig optimeConfig = configuration.GetSection("Optime").Get<OptimeConfig>();
@@ -63,8 +63,8 @@ namespace OptimeGBAServer.Services
             _romPath = optimeConfig.Rom;
 
             _logger = logger;
-            _screenSubjectService = screenSubjectService;
-            _soundSubjectService = soundSubjectService;
+            _videoSubjectService = videoSubjectService;
+            _audioSubjectService = audioSubjectService;
             _renderer = renderer;
         }
 
@@ -82,7 +82,7 @@ namespace OptimeGBAServer.Services
             {
                 await mainClock.WaitForNextTickAsync(cancellationToken);
 
-                if (_screenSubjectService.ObserverCount == 0)
+                if (_videoSubjectService.ObserverCount == 0)
                 {
                     continue;
                 }
@@ -118,22 +118,22 @@ namespace OptimeGBAServer.Services
             }
         }
 
-        private byte[] _soundBuffer = new byte[0x200000]; // 2048k
-        private int _soundBufferOffset = 0;
-        private void FlushSound(short[] stereo16BitInterleavedData)
+        private byte[] _audioBuffer = new byte[0x200000]; // 2048k
+        private int _audioBufferOffset = 0;
+        private void FlushAudio(short[] stereo16BitInterleavedData)
         {
             Span<byte> source = MemoryMarshal.Cast<short, byte>(stereo16BitInterleavedData.AsSpan());
 
-            if (_soundBufferOffset + source.Length >= _soundBuffer.Length) {
-                _soundBufferOffset = 0;
+            if (_audioBufferOffset + source.Length >= _audioBuffer.Length) {
+                _audioBufferOffset = 0;
             }
-            Memory<byte> buffer = new Memory<byte>(_soundBuffer, _soundBufferOffset, source.Length + FRAME_HEADER_LENGTH);
-            _soundBufferOffset += stereo16BitInterleavedData.Length;
+            Memory<byte> buffer = new Memory<byte>(_audioBuffer, _audioBufferOffset, source.Length + FRAME_HEADER_LENGTH);
+            _audioBufferOffset += stereo16BitInterleavedData.Length;
 
-            SOUND_FRAME_HEADER.CopyTo(buffer.Span);
+            AUDIO_FRAME_HEADER.CopyTo(buffer.Span);
             source.CopyTo(buffer.Span.Slice(FRAME_HEADER_LENGTH));
 
-            _soundSubjectService.BufferWriter.TryWrite(new SoundSubjectPayload()
+            _audioSubjectService.BufferWriter.TryWrite(new AudioSubjectPayload()
             {
                 Buffer = buffer
             });
@@ -196,7 +196,7 @@ namespace OptimeGBAServer.Services
 
             _logger.LogInformation("Loading GBA file");
 
-            var provider = new ProviderGba(gbaBios, rom, savPath, FlushSound);
+            var provider = new ProviderGba(gbaBios, rom, savPath, FlushAudio);
             provider.BootBios = true;
 
             Gba gba = new Gba(provider);

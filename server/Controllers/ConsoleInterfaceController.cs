@@ -29,8 +29,8 @@ namespace OptimeGBAServer.Controllers
         private const string KEY_UP = "up";
         private const string KEY_DOWN = "down";
 
-        private readonly ScreenSubjectService _screen;
-        private readonly SoundSubjectService _sound;
+        private readonly VideoSubjectService _video;
+        private readonly AudioSubjectService _audio;
         private readonly GbaHostService _gba;
         private readonly IGbaRenderer _renderer;
 
@@ -44,12 +44,12 @@ namespace OptimeGBAServer.Controllers
 
         public ConsoleInterfaceController(
             ILogger<ConsoleInterfaceController> logger,
-            ScreenSubjectService screen, SoundSubjectService sound,
+            VideoSubjectService video, AudioSubjectService audio,
             GbaHostService gba, IGbaRenderer renderer
         ) : base(logger, new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase })
         {
-            _screen = screen;
-            _sound = sound;
+            _video = video;
+            _audio = audio;
             _gba = gba;
             _renderer = renderer;
         }
@@ -88,8 +88,8 @@ namespace OptimeGBAServer.Controllers
                     });
                     break;
 
-                case "soundControl":
-                    this._mute = request.SoundControlAction?.Mute ?? true;
+                case "audioControl":
+                    this._mute = request.AudioControlAction?.Mute ?? true;
                     break;
 
                 default:
@@ -188,41 +188,41 @@ namespace OptimeGBAServer.Controllers
                 }
             });
 
-            Channel<ScreenSubjectPayload> screenBufferChannel = Channel.CreateBounded<ScreenSubjectPayload>(
+            var videoBufferChannel = Channel.CreateBounded<VideoSubjectPayload>(
                 new BoundedChannelOptions(1) { FullMode = BoundedChannelFullMode.DropNewest }
             );
-            _screen.RegisterObserver(screenBufferChannel.Writer);
+            _video.RegisterObserver(videoBufferChannel.Writer);
 
-            Channel<SoundSubjectPayload> soundBufferChannel = Channel.CreateBounded<SoundSubjectPayload>(
+            var audioBufferChannel = Channel.CreateBounded<AudioSubjectPayload>(
                 new BoundedChannelOptions(128) { FullMode = BoundedChannelFullMode.DropNewest }
             );
-            _sound.RegisterObserver(soundBufferChannel.Writer);
+            _audio.RegisterObserver(audioBufferChannel.Writer);
 
             try
             {
                 while (!cancellationToken.IsCancellationRequested)
                 {
                     await Task.WhenAny(
-                        screenBufferChannel.Reader.WaitToReadAsync(cancellationToken).AsTask(),
-                        soundBufferChannel.Reader.WaitToReadAsync(cancellationToken).AsTask()
+                        videoBufferChannel.Reader.WaitToReadAsync(cancellationToken).AsTask(),
+                        audioBufferChannel.Reader.WaitToReadAsync(cancellationToken).AsTask()
                     );
                     await SendAllResponses(webSocket, cancellationToken);
-                    await SendScreen(webSocket, screenBufferChannel.Reader, cancellationToken);
-                    await SendSound(webSocket, soundBufferChannel.Reader, cancellationToken);
+                    await SendVideo(webSocket, videoBufferChannel.Reader, cancellationToken);
+                    await SendAudio(webSocket, audioBufferChannel.Reader, cancellationToken);
                 }
             }
             // Graceful close
             catch (OperationCanceledException) { }
             finally
             {
-                _screen.DeregisterObserver(screenBufferChannel.Writer);
-                _sound.DeregisterObserver(soundBufferChannel.Writer);
+                _video.DeregisterObserver(videoBufferChannel.Writer);
+                _audio.DeregisterObserver(audioBufferChannel.Writer);
             }
         }
 
-        private async ValueTask SendScreen(WebSocket webSocket, ChannelReader<ScreenSubjectPayload> bufferReader, CancellationToken cancellationToken)
+        private async ValueTask SendVideo(WebSocket webSocket, ChannelReader<VideoSubjectPayload> bufferReader, CancellationToken cancellationToken)
         {
-            while (bufferReader.TryRead(out ScreenSubjectPayload payload))
+            while (bufferReader.TryRead(out VideoSubjectPayload payload))
             {
                 // A simple traffic control. Client will send back a request whenever a frame is received.
                 if (_frameToken > 0)
@@ -240,9 +240,9 @@ namespace OptimeGBAServer.Controllers
             }
         }
 
-        private async ValueTask SendSound(WebSocket webSocket, ChannelReader<SoundSubjectPayload> bufferReader, CancellationToken cancellationToken)
+        private async ValueTask SendAudio(WebSocket webSocket, ChannelReader<AudioSubjectPayload> bufferReader, CancellationToken cancellationToken)
         {
-            while (bufferReader.TryRead(out SoundSubjectPayload payload))
+            while (bufferReader.TryRead(out AudioSubjectPayload payload))
             {
                 // Share the same traffic control with the video stream.
                 if (!_mute && _frameToken > 0)

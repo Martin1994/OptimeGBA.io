@@ -69,7 +69,7 @@ export class GbaView extends React.PureComponent<GbaViewProps> {
         this.audio.createMediaStreamSource(audioStream).connect(this.audio.destination);
     }
 
-    public renderScreenFrame(frame: ArrayBufferView): void {
+    public renderVideoFrame(frame: ArrayBufferView): void {
         try {
             this.decoder?.decode(new EncodedVideoChunk({
                 data: frame,
@@ -93,7 +93,7 @@ export class GbaView extends React.PureComponent<GbaViewProps> {
         }
     }
 
-    public async flushSoundFrame(frame: ArrayBufferView): Promise<void> {
+    public async flushAudioFrame(frame: ArrayBufferView): Promise<void> {
         const sampleRate = 32768;
         const channels = 2;
         const buffer = new Int16Array(frame.buffer, frame.byteOffset, frame.byteLength >> 1);

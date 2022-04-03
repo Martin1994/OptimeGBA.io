@@ -5,13 +5,13 @@ using OptimeGBAServer.Models;
 
 namespace OptimeGBAServer.Services
 {
-    public struct ScreenSubjectPayload
+    public struct VideoSubjectPayload
     {
         public ReadOnlyMemory<byte> Buffer { get; set; }
         public FrameMetadata FrameMetadata { get; set; }
     }
-    public class ScreenSubjectService : SubjectService<ScreenSubjectPayload>
+    public class VideoSubjectService : SubjectService<VideoSubjectPayload>
     {
-        public ScreenSubjectService(IHostApplicationLifetime lifetime, ILogger<ScreenSubjectService> logger) : base(lifetime, logger) { }
+        public VideoSubjectService(IHostApplicationLifetime lifetime, ILogger<VideoSubjectService> logger) : base(lifetime, logger) { }
     }
 }

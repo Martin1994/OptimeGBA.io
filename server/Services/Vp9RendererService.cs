@@ -33,7 +33,7 @@ namespace OptimeGBAServer.Services
 
         public Vp9RendererService(
             IHostApplicationLifetime lifetime, IConfiguration configuration, ILogger<Vp9RendererService> logger,
-            ScreenSubjectService screenSubjectService, ScreenshotHelper screenshot
+            VideoSubjectService screenSubjectService, ScreenshotHelper screenshot
         ) : base(lifetime, logger, screenSubjectService)
         {
             _logger = logger;
@@ -121,9 +121,9 @@ namespace OptimeGBAServer.Services
                         bufferPoolIndex = (bufferOffset + 1) % bufferPoolSize;
                         var frame = packet.DataAsFrame;
                         Memory<byte> buffer = new Memory<byte>(frameBuffer, bufferOffset, bufferSize);
-                        GbaHostService.SCREEN_FRAME_HEADER.CopyTo(buffer.Span);
+                        GbaHostService.VIDEO_FRAME_HEADER.CopyTo(buffer.Span);
                         frame.Buf.CopyTo(buffer.Span.Slice(GbaHostService.FRAME_HEADER_LENGTH));
-                        FlushFrame(new ScreenSubjectPayload()
+                        FlushFrame(new VideoSubjectPayload()
                         {
                             Buffer = buffer.Slice(0, frame.Buf.Length + GbaHostService.FRAME_HEADER_LENGTH),
                             FrameMetadata = new FrameMetadata()

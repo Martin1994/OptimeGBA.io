@@ -16,14 +16,14 @@ namespace OptimeGBAServer.Services
 
         public abstract string CodecString { get; }
 
-        private readonly ScreenSubjectService _screenSubjectService;
+        private readonly VideoSubjectService _videoSubjectService;
 
         private readonly Channel<TScreenBuffer> _emulatorScreenBuffer = Channel.CreateUnbounded<TScreenBuffer>();
         private readonly Channel<TScreenBuffer> _rendererScreenBuffer = Channel.CreateUnbounded<TScreenBuffer>();
 
-        public GbaRendererService(IHostApplicationLifetime lifetime, ILogger logger, ScreenSubjectService screenSubjectService) : base(lifetime, logger)
+        public GbaRendererService(IHostApplicationLifetime lifetime, ILogger logger, VideoSubjectService videoSubjectService) : base(lifetime, logger)
         {
-            _screenSubjectService = screenSubjectService;
+            _videoSubjectService = videoSubjectService;
             _emulatorScreenBuffer.Writer.TryWrite(this.ProvideScreenBuffer());
         }
 
@@ -45,9 +45,9 @@ namespace OptimeGBAServer.Services
 
         protected abstract void SnapshotScreen(Gba gba, TScreenBuffer screenBuffer);
 
-        protected void FlushFrame(ScreenSubjectPayload payload)
+        protected void FlushFrame(VideoSubjectPayload payload)
         {
-            _screenSubjectService.BufferWriter.TryWrite(payload);
+            _videoSubjectService.BufferWriter.TryWrite(payload);
             _bpf.AddSample(payload.Buffer.Length << 3);
         }
     }

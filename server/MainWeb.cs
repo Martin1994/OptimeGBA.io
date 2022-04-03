@@ -16,11 +16,11 @@ namespace OptimeGBAServer
             builder.Services.AddSingleton<GbaHostService>();
             builder.Services.AddHostedService<GbaHostService>(s => s.GetRequiredService<GbaHostService>());
 
-            builder.Services.AddSingleton<ScreenSubjectService>();
-            builder.Services.AddHostedService<ScreenSubjectService>(s => s.GetRequiredService<ScreenSubjectService>());
+            builder.Services.AddSingleton<VideoSubjectService>();
+            builder.Services.AddHostedService<VideoSubjectService>(s => s.GetRequiredService<VideoSubjectService>());
 
-            builder.Services.AddSingleton<SoundSubjectService>();
-            builder.Services.AddHostedService<SoundSubjectService>(s => s.GetRequiredService<SoundSubjectService>());
+            builder.Services.AddSingleton<AudioSubjectService>();
+            builder.Services.AddHostedService<AudioSubjectService>(s => s.GetRequiredService<AudioSubjectService>());
 
             switch (builder.Configuration["VideoEncoding"].ToString()) {
                 case "vp9":

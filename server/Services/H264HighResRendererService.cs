@@ -17,8 +17,8 @@ namespace OptimeGBAServer.Services
     {
         public H264HighResRendererService(
             IHostApplicationLifetime lifetime, ILogger<H264HighResRendererService> logger,
-            ScreenSubjectService screenSubjectService, ScreenshotHelper screenshot
-        ) : base(lifetime, logger, screenSubjectService, screenshot) { }
+            VideoSubjectService videoSubjectService, ScreenshotHelper screenshot
+        ) : base(lifetime, logger, videoSubjectService, screenshot) { }
 
         protected override void SnapshotScreen(Gba gba, OpenH264SourcePicture image)
         {

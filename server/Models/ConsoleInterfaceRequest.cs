@@ -10,6 +10,6 @@ namespace OptimeGBAServer.Models
 
         public PingAction? PingAction { get; set; }
 
-        public SoundControlAction? SoundControlAction { get; set; }
+        public AudioControlAction? AudioControlAction { get; set; }
     }
 }

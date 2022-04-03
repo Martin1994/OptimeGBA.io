@@ -63,8 +63,8 @@ export class Gba extends React.PureComponent<GbaProps, GbaStates> {
             />
             <GbaSocket ref={this.socketRef}
                 onStatus={status => this.setState({ status })}
-                onScreenFrame={frame => this.handleScreenFrame(frame)}
-                onSoundFrame={frame => this.handleSoundFrame(frame)}
+                onVideoFrame={frame => this.handleVideoFrame(frame)}
+                onAudioFrame={frame => this.handleAudioFrame(frame)}
                 onMessageEvent={message => this.handleMessage(message)}
             />
         </React.Fragment>;
@@ -86,8 +86,8 @@ export class Gba extends React.PureComponent<GbaProps, GbaStates> {
         }
     }
 
-    private handleScreenFrame(frame: ArrayBufferView): void {
-        this.view?.renderScreenFrame(frame);
+    private handleVideoFrame(frame: ArrayBufferView): void {
+        this.view?.renderVideoFrame(frame);
 
         this.frameCounter++;
 
@@ -108,8 +108,8 @@ export class Gba extends React.PureComponent<GbaProps, GbaStates> {
         });
     }
 
-    private handleSoundFrame(frame: ArrayBufferView): void {
-        void this.view?.flushSoundFrame(frame);
+    private handleAudioFrame(frame: ArrayBufferView): void {
+        void this.view?.flushAudioFrame(frame);
     }
 
     private handleMessage(message: ActionResponse): void {
@@ -148,8 +148,8 @@ export class Gba extends React.PureComponent<GbaProps, GbaStates> {
         this.setState({ mute });
 
         this.socket?.sendAction({
-            action: "soundControl",
-            soundControlAction: {
+            action: "audioControl",
+            audioControlAction: {
                 mute
             }
         });
