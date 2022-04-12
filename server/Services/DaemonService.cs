@@ -24,22 +24,23 @@ namespace OptimeGBAServer.Services
         {
             _logger.LogInformation("Starting up daemon...");
 
-            _backgroundCancellation = new CancellationTokenSource();
-            _backgroundTask = Task.Run(async () =>
-            {
-                try
-                {
-                    await RunAsync(_backgroundCancellation.Token);
-                }
-                catch (OperationCanceledException) {}
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, ex.Message);
-                    _lifetime.StopApplication();
-                }
-            });
+            _backgroundTask = RunAsyncAndWrapExceptions();
 
             await Task.CompletedTask;
+        }
+
+        private async Task RunAsyncAndWrapExceptions() {
+            _backgroundCancellation = new CancellationTokenSource();
+            try
+            {
+                await RunAsync(_backgroundCancellation.Token);
+            }
+            catch (OperationCanceledException) {}
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, ex.Message);
+                _lifetime.StopApplication();
+            }
         }
 
         protected abstract Task RunAsync(CancellationToken cancellationToken);

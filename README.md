@@ -13,7 +13,7 @@ Audio frames are transmitted in raw 16 bit integer format with 2 channels. Audio
 
 ## Development
 
-Note: Currently OptimeGBA.io depends on a private branch of [OptimeGBA](https://github.com/Powerlated/OptimeGBA) which vends a library rather than an executable.
+Note: Currently OptimeGBA.io depends on a [forked branch of OptimeGBA](https://github.com/Martin1994/OptimeGBA/tree/corelib) which vends a library rather than an executable.
 
 Run webpack dev server:
 
