@@ -54,20 +54,23 @@ export class Gba extends React.PureComponent<GbaProps, GbaStates> {
      * @overrides
      */
     public render(): React.ReactNode {
-        return <React.Fragment>
-            <GbaView ref={this.viewRef} {...this.state}
-                onMute={mute => this.handleMuteEvent(mute)}
-            />
-            <GbaKeyControl
-                onKeyEvent={(key, action, repeat) => this.sendKeyAction(key, action, repeat)}
-            />
-            <GbaSocket ref={this.socketRef}
-                onStatus={status => this.setState({ status })}
-                onVideoFrame={frame => this.handleVideoFrame(frame)}
-                onAudioFrame={frame => this.handleAudioFrame(frame)}
-                onMessageEvent={message => this.handleMessage(message)}
-            />
-        </React.Fragment>;
+        return (
+            <>
+                <GbaView ref={this.viewRef} {...this.state}
+                    onMute={mute => this.handleMuteEvent(mute)}
+                    onKeyEvent={(key, action, repeat) => this.sendKeyAction(key, action, repeat)}
+                />
+                <GbaKeyControl
+                    onKeyEvent={(key, action, repeat) => this.sendKeyAction(key, action, repeat)}
+                />
+                <GbaSocket ref={this.socketRef}
+                    onStatus={status => this.setState({ status })}
+                    onVideoFrame={frame => this.handleVideoFrame(frame)}
+                    onAudioFrame={frame => this.handleAudioFrame(frame)}
+                    onMessageEvent={message => this.handleMessage(message)}
+                />
+            </>
+        );
     }
 
     /**

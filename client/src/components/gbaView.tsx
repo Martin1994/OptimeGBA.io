@@ -1,10 +1,13 @@
 import * as React from "react";
+import { GbaKey, GbaKeyAction } from "../models/actions";
 import { GbaStates } from "./gba";
+import { GbaKeyHandler } from "./gbaKeyControl";
 
 export type GbaMuteEvent = (mute: boolean) => void;
 
 export interface GbaViewProps extends GbaStates {
-    onMute: GbaMuteEvent;
+    readonly onMute: GbaMuteEvent;
+    readonly onKeyEvent: GbaKeyHandler;
 }
 
 export class GbaView extends React.PureComponent<GbaViewProps> {
@@ -39,17 +42,75 @@ export class GbaView extends React.PureComponent<GbaViewProps> {
             void this.mountAudio();
         }
 
-        return <div id="console-container">
-            <img className="console-body" src="./images/consoleBody.png" />
-            <img className="console-body" src="./images/innerLogo.png" />
-            <img className="console-body" style={this.indicatorStyle} src="./images/consoleIndicator.png" />
-            <canvas ref={this.screenCanvasRef} width={240} height={160} className="console-screen" />
-            <audio ref={this.audioRef} />
-            <div className="console-status">
-                <span>{`RTT: ${this.renderedRtt.padStart(6, "\u00A0")} | FPS: ${this.renderedFps.padStart(2, "\u00A0")} | Worst Frame Gap: ${this.renderedWorstFrameLatency.padStart(14, "\u00A0")}`}</span>
+        const view = this;
+
+        return (
+            <div id="console-container">
+                <img className="console-body" src="./images/consoleBody.png" />
+                <img className="console-body" src="./images/innerLogo.png" />
+                <img className="console-body" style={this.indicatorStyle} src="./images/consoleIndicator.png" />
+                <canvas ref={this.screenCanvasRef} width={240} height={160} className="console-screen" />
+                <audio ref={this.audioRef} />
+                <div className="console-status">
+                    <span>{`RTT: ${this.renderedRtt.padStart(6, "\u00A0")} | FPS: ${this.renderedFps.padStart(2, "\u00A0")} | Worst Frame Gap: ${this.renderedWorstFrameLatency.padStart(14, "\u00A0")}`}</span>
+                </div>
+                <MuteButton>{this.props.mute ? "\u{1F507}" : "\u{1F508}"}</MuteButton>
+                <ControlButton gbaKey="A" binding="Z" />
+                <ControlButton gbaKey="B" binding="X" />
+                <ControlButton gbaKey="L" binding="A" />
+                <ControlButton gbaKey="R" binding="S" />
+                <ControlButton gbaKey="down" binding="DOWN" />
+                <ControlButton gbaKey="up" binding="UP" />
+                <ControlButton gbaKey="left" binding="LEFT" />
+                <ControlButton gbaKey="right" binding="RIGHT" />
+                <ControlButton gbaKey="select" binding="BACKSPACE" />
+                <ControlButton gbaKey="start" binding="ENTER" />
             </div>
-            <button className="console-silent-button" onClick={() => setTimeout(() => this.props.onMute(!this.props.mute))}>{this.props.mute ? "\u{1F507}" : "\u{1F508}"}</button>
-        </div>;
+        );
+
+        function ControlButton({ gbaKey, binding }: { gbaKey: GbaKey, binding: string }): React.ReactElement {
+            function makeHandler(action: GbaKeyAction) {
+                return (e: React.UIEvent) => {
+                    view.props.onKeyEvent(gbaKey, action, false);
+                }
+            }
+
+            const className = `console-control-button button-${gbaKey}`;
+            const tooltip = `Key binding: ${binding}`;
+
+            if (navigator.maxTouchPoints > 0) {
+                return (
+                    <div
+                        className={className}
+                        title={tooltip}
+                        onContextMenu={e => e.preventDefault()}
+                        onTouchStart={makeHandler("down")}
+                        onTouchEnd={makeHandler("up")}
+                    />
+                );
+            } else {
+                return (
+                    <div
+                        className={className}
+                        title={tooltip}
+                        onMouseDown={makeHandler("down")}
+                        onMouseUp={makeHandler("up")}
+                    />
+                );
+            }
+        };
+
+        function MuteButton({ children }: { children: string }): React.ReactElement {
+            return (
+                <button
+                    className="console-silent-button"
+                    type="button"
+                    onClick={() => setTimeout(() => view.props.onMute(!view.props.mute))}
+                >
+                    {children}
+                </button>
+            )
+        }
     }
 
     private async mountAudio(): Promise<void> {

@@ -16,7 +16,7 @@ namespace OptimeGBAServer.Controllers
         public WebpackReverseProxyController(IConfiguration configuration)
         {
             string webpackPrefix = configuration["WebpackAddress"] ?? "http://127.0.0.1:5001";
-            _uriPrefix = webpackPrefix.Trim('/') + "/";
+            _uriPrefix = webpackPrefix.Trim('/') + "/scripts/";
         }
 
         [HttpGet]

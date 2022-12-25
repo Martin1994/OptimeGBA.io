@@ -63,6 +63,7 @@ body {
     align-self: center;
     width: 1120px;
     height: 640px;
+    touch-action: none;
 }
 
 #console-container .console-body {
@@ -96,4 +97,88 @@ body {
 
 #console-container .console-silent-button {
     position: absolute;
+}
+
+#console-container .console-control-button {
+    position: absolute;
+    margin: 0;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+}
+
+#console-container .console-control-button.button-L,
+#console-container .console-control-button.button-R {
+    width: 192px;
+    height: 96px;
+    margin-top: 64px;
+}
+
+#console-container .console-control-button.button-L {
+    margin-left: 64px;
+}
+
+#console-container .console-control-button.button-R {
+    margin-left: 864px;
+}
+
+#console-container .console-control-button.button-up,
+#console-container .console-control-button.button-down {
+    width: 32px;
+    height: 64px;
+    margin-left: 160px;
+}
+
+#console-container .console-control-button.button-up {
+    margin-top: 192px;
+}
+
+#console-container .console-control-button.button-down {
+    margin-top: 288px;
+}
+
+#console-container .console-control-button.button-left,
+#console-container .console-control-button.button-right {
+    width: 64px;
+    height: 32px;
+    margin-top: 256px;
+}
+
+#console-container .console-control-button.button-left {
+    margin-left: 96px;
+}
+
+#console-container .console-control-button.button-right {
+    margin-left: 192px;
+}
+
+#console-container .console-control-button.button-A,
+#console-container .console-control-button.button-B {
+    width: 64px;
+    height: 64px;
+}
+
+#console-container .console-control-button.button-A {
+    margin-top: 256px;
+    margin-left: 960px;
+}
+
+#console-container .console-control-button.button-B {
+    margin-top: 288px;
+    margin-left: 864px;
+}
+
+#console-container .console-control-button.button-start,
+#console-container .console-control-button.button-select {
+    width: 32px;
+    height: 32px;
+    margin-left: 224px;
+}
+
+#console-container .console-control-button.button-start {
+    margin-top: 352px;
+}
+
+#console-container .console-control-button.button-select {
+    margin-top: 416px;
 }

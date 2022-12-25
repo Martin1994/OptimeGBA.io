@@ -1,15 +1,15 @@
-const { merge } = require('webpack-merge');
-const common = require('./webpack.config.js');
+const { merge } = require("webpack-merge");
+const common = require("./webpack.config.js");
 
 module.exports = merge(common, {
-    mode: 'development',
+    mode: "development",
     devtool: "source-map",
     devServer: {
-        host: 'local-ip',
-        port: '',
-        static: false,
+        host: "local-ip",
+        port: "",
+        static: ["../wwwroot"],
         compress: true,
-        host: '127.0.0.1',
+        host: "127.0.0.1",
         port: 5001,
     }
 });

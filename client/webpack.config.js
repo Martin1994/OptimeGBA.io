@@ -17,5 +17,6 @@ module.exports = {
     output: {
         filename: "index.js",
         path: path.resolve(__dirname, "..", "wwwroot", "scripts"),
+        publicPath: "/scripts"
     }
 };
