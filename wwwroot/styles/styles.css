@@ -66,6 +66,10 @@ body {
     touch-action: none;
 }
 
+#console-container.landscape {
+    transform: rotate(90deg);
+}
+
 #console-container .console-body {
     position: absolute;
     image-rendering: pixelated;
@@ -97,6 +101,11 @@ body {
 
 #console-container .console-silent-button {
     position: absolute;
+}
+
+#console-container .console-rotate-button {
+    position: absolute;
+    margin-left: 50px;
 }
 
 #console-container .console-control-button {

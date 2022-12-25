@@ -10,7 +10,11 @@ export interface GbaViewProps extends GbaStates {
     readonly onKeyEvent: GbaKeyHandler;
 }
 
-export class GbaView extends React.PureComponent<GbaViewProps> {
+interface GbaViewStates {
+    readonly portrait: boolean;
+}
+
+export class GbaView extends React.PureComponent<GbaViewProps, GbaViewStates> {
 
     private readonly screenCanvasRef = React.createRef<HTMLCanvasElement>();
     private get screenDrawContext(): CanvasRenderingContext2D | null | undefined {
@@ -27,6 +31,10 @@ export class GbaView extends React.PureComponent<GbaViewProps> {
 
     constructor(props: GbaViewProps) {
         super(props);
+
+        this.state = {
+            portrait: true
+        };
     }
 
     /**
@@ -42,10 +50,11 @@ export class GbaView extends React.PureComponent<GbaViewProps> {
             void this.mountAudio();
         }
 
+        // eslint-disable-next-line @typescript-eslint/no-this-alias
         const view = this;
 
         return (
-            <div id="console-container">
+            <div id="console-container" className={this.state.portrait ? "portrait" : "landscape"}>
                 <img className="console-body" src="./images/consoleBody.png" />
                 <img className="console-body" src="./images/innerLogo.png" />
                 <img className="console-body" style={this.indicatorStyle} src="./images/consoleIndicator.png" />
@@ -55,6 +64,7 @@ export class GbaView extends React.PureComponent<GbaViewProps> {
                     <span>{`RTT: ${this.renderedRtt.padStart(6, "\u00A0")} | FPS: ${this.renderedFps.padStart(2, "\u00A0")} | Worst Frame Gap: ${this.renderedWorstFrameLatency.padStart(14, "\u00A0")}`}</span>
                 </div>
                 <MuteButton>{this.props.mute ? "\u{1F507}" : "\u{1F508}"}</MuteButton>
+                <RotateButton>{this.state.portrait ? "\u{21BB}" : "\u{21BA}"}</RotateButton>
                 <ControlButton gbaKey="A" binding="Z" />
                 <ControlButton gbaKey="B" binding="X" />
                 <ControlButton gbaKey="L" binding="A" />
@@ -70,9 +80,9 @@ export class GbaView extends React.PureComponent<GbaViewProps> {
 
         function ControlButton({ gbaKey, binding }: { gbaKey: GbaKey, binding: string }): React.ReactElement {
             function makeHandler(action: GbaKeyAction) {
-                return (e: React.UIEvent) => {
+                return () => {
                     view.props.onKeyEvent(gbaKey, action, false);
-                }
+                };
             }
 
             const className = `console-control-button button-${gbaKey}`;
@@ -98,7 +108,7 @@ export class GbaView extends React.PureComponent<GbaViewProps> {
                     />
                 );
             }
-        };
+        }
 
         function MuteButton({ children }: { children: string }): React.ReactElement {
             return (
@@ -109,7 +119,19 @@ export class GbaView extends React.PureComponent<GbaViewProps> {
                 >
                     {children}
                 </button>
-            )
+            );
+        }
+
+        function RotateButton({ children }: { children: string }): React.ReactElement {
+            return (
+                <button
+                    className="console-rotate-button"
+                    type="button"
+                    onClick={() => view.setState({ portrait: !view.state.portrait })}
+                >
+                    {children}
+                </button>
+            );
         }
     }
 
