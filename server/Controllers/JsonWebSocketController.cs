@@ -69,6 +69,10 @@ namespace OptimeGBAServer.Controllers
             {
                 _logger.LogDebug("Client closed.");
             }
+            catch (WebSocketException)
+            {
+                _logger.LogDebug("Client aborted.");
+            }
             catch (OperationCanceledException)
             {
                 _logger.LogDebug("Client aborted.");

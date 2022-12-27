@@ -65,7 +65,7 @@ namespace OptimeGBAServer.Controllers
                     case 'k': // key
                         if (utf8JsonStream == null)
                         {
-                            _logger.LogWarning("Expected JSON body but got nothing. Discarded.");
+                            _logger.LogWarning("Expected JSON body for action \"k\" but got nothing. Discarded.");
                             break;
                         }
                         HandleKeyRequest(await JsonSerializer.DeserializeAsync<KeyRequest>(utf8JsonStream, _serializerOptions, cancellationToken));
@@ -74,7 +74,7 @@ namespace OptimeGBAServer.Controllers
                     case 't': // fill token
                         if (utf8JsonStream != null)
                         {
-                            _logger.LogWarning("Expected no JSON body but got something. Discarded.");
+                            _logger.LogWarning("Expected no JSON body for action \"t\" but got something. Discarded.");
                             await JsonSerializer.DeserializeAsync<DummyRequest>(utf8JsonStream, _serializerOptions, cancellationToken);
                             break;
                         }
@@ -84,7 +84,7 @@ namespace OptimeGBAServer.Controllers
                     case 'p': // ping
                         if (utf8JsonStream == null)
                         {
-                            _logger.LogWarning("Expected JSON body but got nothing. Discarded.");
+                            _logger.LogWarning("Expected JSON body for action \"p\" but got nothing. Discarded.");
                             break;
                         }
                         HandlePingRequest(await JsonSerializer.DeserializeAsync<PingRequest>(utf8JsonStream, _serializerOptions, cancellationToken));
@@ -93,7 +93,7 @@ namespace OptimeGBAServer.Controllers
                     case 'a': // audio control
                         if (utf8JsonStream == null)
                         {
-                            _logger.LogWarning("Expected JSON body but got nothing. Discarded.");
+                            _logger.LogWarning("Expected JSON body for action \"a\" but got nothing. Discarded.");
                             break;
                         }
                         HandleAudioControlRequest(await JsonSerializer.DeserializeAsync<AudioControlRequest>(utf8JsonStream, _serializerOptions, cancellationToken));
