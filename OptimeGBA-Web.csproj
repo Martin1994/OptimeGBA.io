@@ -1,6 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
+    <Version>1.1.0.0</Version>
+    <Authors>Martin Chloride</Authors>
+    <Description>A streaming-based web server frontend of OptimeGBA.</Description>
     <TargetFramework>net6.0</TargetFramework>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
