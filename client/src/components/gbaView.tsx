@@ -1,7 +1,6 @@
 import * as React from "react";
-import { GbaKey, GbaKeyAction } from "../models/actions";
 import { GbaStates } from "./gba";
-import { GbaKeyHandler } from "./gbaKeyControl";
+import { GbaKeyControl, GbaKeyHandler } from "./gbaKeyControl";
 
 export type GbaMuteEvent = (mute: boolean) => void;
 
@@ -28,6 +27,30 @@ export class GbaView extends React.PureComponent<GbaViewProps, GbaViewStates> {
     private audio?: AudioContext;
     private audioGenerator?: MediaStreamAudioTrackGenerator;
     private audioTimestamp: number = 0;
+ 
+    private readonly MuteButton = ({ children }: { children: string }): React.ReactElement => {
+        return (
+            <button
+                className="console-silent-button"
+                type="button"
+                onClick={() => this.props.onMute(!this.props.mute)}
+            >
+                {children}
+            </button>
+        );
+    };
+
+    private readonly RotateButton = ({ children }: { children: string }): React.ReactElement => {
+        return (
+            <button
+                className="console-rotate-button"
+                type="button"
+                onClick={() => this.setState({ portrait: !this.state.portrait })}
+            >
+                {children}
+            </button>
+        );
+    };
 
     constructor(props: GbaViewProps) {
         super(props);
@@ -50,9 +73,8 @@ export class GbaView extends React.PureComponent<GbaViewProps, GbaViewStates> {
             void this.mountAudio();
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-this-alias
-        const view = this;
-
+        const MuteButton = this.MuteButton;
+        const RotateButton = this.RotateButton;
         return (
             <div id="console-container" className={this.state.portrait ? "portrait" : "landscape"}>
                 <img className="console-body" src="./images/consoleBody.png" />
@@ -65,74 +87,9 @@ export class GbaView extends React.PureComponent<GbaViewProps, GbaViewStates> {
                 </div>
                 <MuteButton>{this.props.mute ? "\u{1F507}" : "\u{1F508}"}</MuteButton>
                 <RotateButton>{this.state.portrait ? "\u{21BB}" : "\u{21BA}"}</RotateButton>
-                <ControlButton gbaKey="A" binding="Z" />
-                <ControlButton gbaKey="B" binding="X" />
-                <ControlButton gbaKey="L" binding="A" />
-                <ControlButton gbaKey="R" binding="S" />
-                <ControlButton gbaKey="down" binding="DOWN" />
-                <ControlButton gbaKey="up" binding="UP" />
-                <ControlButton gbaKey="left" binding="LEFT" />
-                <ControlButton gbaKey="right" binding="RIGHT" />
-                <ControlButton gbaKey="select" binding="BACKSPACE" />
-                <ControlButton gbaKey="start" binding="ENTER" />
+                <GbaKeyControl onKeyEvent={this.props.onKeyEvent} />
             </div>
         );
-
-        function ControlButton({ gbaKey, binding }: { gbaKey: GbaKey, binding: string }): React.ReactElement {
-            function makeHandler(action: GbaKeyAction) {
-                return () => {
-                    view.props.onKeyEvent(gbaKey, action, false);
-                };
-            }
-
-            const className = `console-control-button button-${gbaKey}`;
-            const tooltip = `Key binding: ${binding}`;
-
-            if (navigator.maxTouchPoints > 0) {
-                return (
-                    <div
-                        className={className}
-                        title={tooltip}
-                        onContextMenu={e => e.preventDefault()}
-                        onTouchStart={makeHandler("down")}
-                        onTouchEnd={makeHandler("up")}
-                    />
-                );
-            } else {
-                return (
-                    <div
-                        className={className}
-                        title={tooltip}
-                        onMouseDown={makeHandler("down")}
-                        onMouseUp={makeHandler("up")}
-                    />
-                );
-            }
-        }
-
-        function MuteButton({ children }: { children: string }): React.ReactElement {
-            return (
-                <button
-                    className="console-silent-button"
-                    type="button"
-                    onClick={() => setTimeout(() => view.props.onMute(!view.props.mute))}
-                >
-                    {children}
-                </button>
-            );
-        }
-
-        function RotateButton({ children }: { children: string }): React.ReactElement {
-            return (
-                <button
-                    className="console-rotate-button"
-                    type="button"
-                    onClick={() => view.setState({ portrait: !view.state.portrait })}
-                >
-                    {children}
-                </button>
-            );
-        }
     }
 
     private async mountAudio(): Promise<void> {

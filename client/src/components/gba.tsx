@@ -2,7 +2,6 @@ import * as React from "react";
 import { ActionResponse, GbaKey, GbaKeyAction } from "../models/actions";
 import { GbaView } from "./gbaView";
 import { GbaSocket } from "./gbaSocket";
-import { GbaKeyControl } from "./gbaKeyControl";
 
 const FPS_REFRESH_INTERVAL_MS: number = 1000;
 
@@ -38,6 +37,14 @@ export class Gba extends React.PureComponent<GbaProps, GbaStates> {
         return this.socketRef.current;
     }
 
+    // Cache handlers to avoid rerendering
+    private readonly keyActionHandler = this.sendKeyAction.bind(this);
+    private readonly muteEventHandler = (mute: boolean) => setTimeout(() => this.handleMuteEvent(mute));
+    private readonly statusHandler = (status: GbaSocketStatus) => this.setState({ status });
+    private readonly videoFrameHandler = this.handleVideoFrame.bind(this);
+    private readonly audioFrameHandler = this.handleAudioFrame.bind(this);
+    private readonly messageHandler = this.handleMessage.bind(this);
+
     public constructor(props: GbaProps) {
         super(props);
         this.state = {
@@ -57,17 +64,14 @@ export class Gba extends React.PureComponent<GbaProps, GbaStates> {
         return (
             <>
                 <GbaView ref={this.viewRef} {...this.state}
-                    onMute={mute => this.handleMuteEvent(mute)}
-                    onKeyEvent={(key, action, repeat) => this.sendKeyAction(key, action, repeat)}
-                />
-                <GbaKeyControl
-                    onKeyEvent={(key, action, repeat) => this.sendKeyAction(key, action, repeat)}
+                    onMute={this.muteEventHandler}
+                    onKeyEvent={this.keyActionHandler}
                 />
                 <GbaSocket ref={this.socketRef}
-                    onStatus={status => this.setState({ status })}
-                    onVideoFrame={frame => this.handleVideoFrame(frame)}
-                    onAudioFrame={frame => this.handleAudioFrame(frame)}
-                    onMessageEvent={message => this.handleMessage(message)}
+                    onStatus={this.statusHandler}
+                    onVideoFrame={this.videoFrameHandler}
+                    onAudioFrame={this.audioFrameHandler}
+                    onMessageEvent={this.messageHandler}
                 />
             </>
         );
