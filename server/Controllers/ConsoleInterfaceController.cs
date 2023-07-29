@@ -2,7 +2,9 @@ using System;
 using System.Collections.Concurrent;
 using System.IO;
 using System.Net.WebSockets;
+using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -47,7 +49,7 @@ namespace OptimeGBAServer.Controllers
             ILogger<ConsoleInterfaceController> logger,
             VideoSubjectService video, AudioSubjectService audio,
             GbaHostService gba, IGbaRenderer renderer
-        ) : base(logger, new JsonSerializerOptions() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase })
+        ) : base(logger)
         {
             _video = video;
             _audio = audio;
@@ -68,14 +70,14 @@ namespace OptimeGBAServer.Controllers
                             _logger.LogWarning("Expected JSON body for action \"k\" but got nothing. Discarded.");
                             break;
                         }
-                        HandleKeyRequest(await JsonSerializer.DeserializeAsync<KeyRequest>(utf8JsonStream, _serializerOptions, cancellationToken));
+                        HandleKeyRequest(await JsonSerializer.DeserializeAsync(utf8JsonStream, ConsoleInterfaceSourceGenerationContext.Default.KeyRequest, cancellationToken));
                         break;
 
                     case 't': // fill token
                         if (utf8JsonStream != null)
                         {
                             _logger.LogWarning("Expected no JSON body for action \"t\" but got something. Discarded.");
-                            await JsonSerializer.DeserializeAsync<DummyRequest>(utf8JsonStream, _serializerOptions, cancellationToken);
+                            await JsonSerializer.DeserializeAsync(utf8JsonStream, ConsoleInterfaceSourceGenerationContext.Default.DummyRequest, cancellationToken);
                             break;
                         }
                         Interlocked.Add(ref this._frameToken, 1);
@@ -87,7 +89,7 @@ namespace OptimeGBAServer.Controllers
                             _logger.LogWarning("Expected JSON body for action \"p\" but got nothing. Discarded.");
                             break;
                         }
-                        HandlePingRequest(await JsonSerializer.DeserializeAsync<PingRequest>(utf8JsonStream, _serializerOptions, cancellationToken));
+                        HandlePingRequest(await JsonSerializer.DeserializeAsync(utf8JsonStream, ConsoleInterfaceSourceGenerationContext.Default.PingRequest, cancellationToken));
                         break;
 
                     case 'a': // audio control
@@ -96,11 +98,18 @@ namespace OptimeGBAServer.Controllers
                             _logger.LogWarning("Expected JSON body for action \"a\" but got nothing. Discarded.");
                             break;
                         }
-                        HandleAudioControlRequest(await JsonSerializer.DeserializeAsync<AudioControlRequest>(utf8JsonStream, _serializerOptions, cancellationToken));
+                        HandleAudioControlRequest(await JsonSerializer.DeserializeAsync(utf8JsonStream, ConsoleInterfaceSourceGenerationContext.Default.AudioControlRequest, cancellationToken));
                         break;
 
                     default:
-                        _logger.LogWarning("Unknown action: {0}. Discarded.", action);
+                        if (utf8JsonStream != null) {
+                            using (StreamReader reader = new StreamReader(utf8JsonStream, Encoding.UTF8))
+                            {
+                                _logger.LogWarning("Unknown action: {0}. Discarded. Body: {1}", action, await reader.ReadToEndAsync());
+                            }
+                        } else {
+                            _logger.LogWarning("Unknown action: {0}. Discarded.", action);
+                        }
                         break;
                 }
             }
@@ -276,9 +285,27 @@ namespace OptimeGBAServer.Controllers
             }
         }
 
-        private void Respond<T>(T response) where T : ConsoleInterfaceResponse
+        private void Respond(PongResponse response)
         {
-            _responseQueue.Enqueue(JsonSerializer.SerializeToUtf8Bytes(response, _serializerOptions));
+            _responseQueue.Enqueue(JsonSerializer.SerializeToUtf8Bytes(response, ConsoleInterfaceSourceGenerationContext.Default.PongResponse));
+        }
+
+        private void Respond(InitResponse response)
+        {
+            _responseQueue.Enqueue(JsonSerializer.SerializeToUtf8Bytes(response, ConsoleInterfaceSourceGenerationContext.Default.InitResponse));
         }
     }
+}
+
+[JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
+[JsonSerializable(typeof(KeyRequest))]
+[JsonSerializable(typeof(DummyRequest))]
+[JsonSerializable(typeof(PingRequest))]
+[JsonSerializable(typeof(AudioControlRequest))]
+[JsonSerializable(typeof(KeyRequest))]
+[JsonSerializable(typeof(KeyRequest))]
+[JsonSerializable(typeof(PongResponse))]
+[JsonSerializable(typeof(InitResponse))]
+internal partial class ConsoleInterfaceSourceGenerationContext : JsonSerializerContext
+{
 }

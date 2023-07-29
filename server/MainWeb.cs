@@ -14,15 +14,15 @@ namespace OptimeGBAServer
         private static void InjectDependencies(WebApplicationBuilder builder)
         {
             builder.Services.AddSingleton<GbaHostService>();
-            builder.Services.AddHostedService<GbaHostService>(s => s.GetRequiredService<GbaHostService>());
+            builder.Services.AddHostedService(s => s.GetRequiredService<GbaHostService>());
 
             builder.Services.AddSingleton<VideoSubjectService>();
-            builder.Services.AddHostedService<VideoSubjectService>(s => s.GetRequiredService<VideoSubjectService>());
+            builder.Services.AddHostedService(s => s.GetRequiredService<VideoSubjectService>());
 
             builder.Services.AddSingleton<AudioSubjectService>();
-            builder.Services.AddHostedService<AudioSubjectService>(s => s.GetRequiredService<AudioSubjectService>());
+            builder.Services.AddHostedService(s => s.GetRequiredService<AudioSubjectService>());
 
-            switch (builder.Configuration["VideoEncoding"].ToString()) {
+            switch (builder.Configuration["VideoEncoding"]!.ToString()) {
                 case "vp9":
                     builder.Services.AddSingleton<IGbaRenderer, Vp9RendererService>();
                     break;

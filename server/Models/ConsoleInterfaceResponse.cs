@@ -1,17 +1,17 @@
 namespace OptimeGBAServer.Models
 {
-    public interface ConsoleInterfaceResponse
+    file interface IConsoleInterfaceResponse
     {
         public string Action { get; }
     }
 
-    public struct InitResponse : ConsoleInterfaceResponse
+    public readonly struct InitResponse : IConsoleInterfaceResponse
     {
         public string Action { get => "init"; }
         public string? Codec { get; init; }
     }
 
-    public struct PongResponse : ConsoleInterfaceResponse
+    public readonly struct PongResponse : IConsoleInterfaceResponse
     {
         public string Action { get => "pong"; }
         public double MadeAt { get; init; }

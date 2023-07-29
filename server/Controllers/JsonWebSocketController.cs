@@ -2,7 +2,6 @@ using System;
 using System.IO;
 using System.Net;
 using System.Net.WebSockets;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
@@ -16,12 +15,10 @@ namespace OptimeGBAServer.Controllers
     public abstract class JsonWebSocketController : ControllerBase
     {
         protected readonly ILogger _logger;
-        protected readonly JsonSerializerOptions? _serializerOptions;
 
-        public JsonWebSocketController(ILogger logger, JsonSerializerOptions? serializerOptions = null)
+        public JsonWebSocketController(ILogger logger)
         {
             _logger = logger;
-            _serializerOptions = serializerOptions;
         }
 
         [HttpGet]
