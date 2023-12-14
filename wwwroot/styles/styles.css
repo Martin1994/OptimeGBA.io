@@ -37,6 +37,10 @@ body {
     margin-block-end: 0;
 }
 
+#header-container a {
+    color: inherit;
+}
+
 #content-container {
     display: flex;  
     justify-content: center;
