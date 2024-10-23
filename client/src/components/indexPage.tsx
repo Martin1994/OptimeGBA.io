@@ -4,9 +4,9 @@ import { Gba } from "./gba";
 export class IndexPage extends React.PureComponent {
     public render(): React.ReactNode {
         return <React.Fragment>
-            <Header><a href="https://github.com/Martin1994/OptimeGBA.io">OptimeGBA<span className="decoration">.</span>io</a></Header>
+            <Header>OptimeGBA<span className="decoration">.</span>io</Header>
             <Content><Gba /></Content>
-            <Footer>Powered by <a href="https://github.com/Powerlated/OptimeGBA">OptimeGBA</a></Footer>
+            <Footer>Powered by <a href="https://github.com/Powerlated/OptimeGBA.io">OptimeGBA.io</a></Footer>
         </React.Fragment>;
     }
 }

@@ -1,9 +1,9 @@
 # OptimeGBA.io
 
-This is a web server frontend of [OptimeGBA](https://github.com/Powerlated/OptimeGBA). Multiple players from browser may play on the same GBA simulator running on a server.
+This is a web server frontend of [OptimeGBA](https://github.com/Martin1994/OptimeGBA). Multiple players from browser may play on the same GBA simulator running on a server.
 
 ## How it works
-OptimeGBA.io hosts an ASP.NET web server with a GBA simulator ([OptimeGBA](https://github.com/Powerlated/OptimeGBA)) running on it. Clients communicates with the simulator with WebSocket.
+OptimeGBA.io hosts an ASP.NET web server with a GBA simulator ([OptimeGBA](https://github.com/Martin1994/OptimeGBA)) running on it. Clients communicates with the simulator with WebSocket.
 
 Video frames are transmitted in encoded video frames. There is a simple traffic control mechanism which caps 10 unacknowledged video frames per client. Each video
 frames are flushed from emulator, encoded on server side, sent to each client, and rendered on client side as soon as possible. In other words, on client side video
