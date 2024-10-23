@@ -237,6 +237,10 @@ namespace OptimeGBAServer.Controllers
                 }
             }
             // Graceful close
+            catch (WebSocketException)
+            {
+                _logger.LogDebug("Client aborted.");
+            }
             catch (OperationCanceledException) { }
             finally
             {

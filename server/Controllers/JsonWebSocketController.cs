@@ -70,10 +70,7 @@ namespace OptimeGBAServer.Controllers
             {
                 _logger.LogDebug("Client aborted.");
             }
-            catch (OperationCanceledException)
-            {
-                _logger.LogDebug("Client aborted.");
-            }
+            catch (OperationCanceledException) { }
             finally
             {
                 endCancellationSource.Cancel();

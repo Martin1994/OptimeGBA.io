@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using OptimeGBAServer.Media;
 using OptimeGBAServer.Services;
 
@@ -43,6 +44,13 @@ namespace OptimeGBAServer
             builder.Services.AddSingleton<ScreenshotHelper>();
 
             builder.Services.AddControllers();
+
+            builder.Services.Configure<HostOptions>(options =>
+            {
+                options.ServicesStopConcurrently = true;
+                options.ServicesStartConcurrently = true;
+                options.ShutdownTimeout = TimeSpan.FromSeconds(5);
+            });
         }
 
         public static async Task Main(string[] args)
